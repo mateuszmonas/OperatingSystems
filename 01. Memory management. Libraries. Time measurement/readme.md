@@ -48,7 +48,7 @@ Wynik wykonania ```diff a.txt b.txt```:
 
 W tym przypadku tablica główna powinna zawierać tylko jeden wskaźnik na  blok operacji edycyjnych (bo mamy tylko jedną parę plików).  Blok operacji edycyjnych powinien być trzyelementową tablicą wskaźników na napisy z treścią operacji edycyjnych.
 
-![Struktura danych](/images/wskazniki.svg "Struktura danych")
+![Struktura danych](/images/lab1/wskazniki.svg "Struktura danych")
 
 Tablice / bloki powinny być alokowane przy pomocy funkcji calloc() (alokacja dynamiczna).
 

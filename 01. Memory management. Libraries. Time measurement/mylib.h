@@ -7,7 +7,6 @@
 #include <ctype.h>
 
 struct operation {
-    unsigned int length;
     char *text;
 };
 
@@ -25,6 +24,12 @@ struct block_array {
 
 struct block_array *create_block_array(int size);
 
+/**
+ * file pairs format should be like "file1:file2"
+ * @param array array of blocks to add file sequence to
+ * @param length amount of file pairs
+ * @param file_pairs string containing file pairs
+ */
 void add_file_sequence(struct block_array *array, int length, char **file_pairs);
 
 void compare_files(struct block_array *array);

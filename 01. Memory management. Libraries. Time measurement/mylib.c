@@ -48,7 +48,6 @@ void compare_files(struct block_array *array) {
 
 struct operation *create_operation(char *operation_text) {
     struct operation *o = malloc(sizeof(struct operation));
-    o->length = strlen(operation_text);
     o->text = operation_text;
     return o;
 }
