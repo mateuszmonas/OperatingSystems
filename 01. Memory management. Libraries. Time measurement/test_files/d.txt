@@ -1,8 +1,0 @@
-> jjj kkk
-< bbb ccc
-< ddd
----
-> fff ccc
-< hhh iii
----
-> bbb ggg

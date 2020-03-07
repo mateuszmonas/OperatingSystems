@@ -3,3 +3,5 @@ cmake-build-debug
 CMakeLists.txt
 working_dir
 out/
+test_files/
+*.txt

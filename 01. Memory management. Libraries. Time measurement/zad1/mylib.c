@@ -69,7 +69,7 @@ unsigned int save_block(struct block_array *array, char *file_pair) {
     curr_block->operations = malloc(sizeof(struct operation *));
     char *buffer = calloc(256, sizeof(char));
     char *path = calloc(256, sizeof(char));
-    char *result = calloc(256, sizeof(char));
+    char *result = calloc(2048, sizeof(char));
     snprintf(path, 256, "%s/%s", get_working_dir(), file_name);
     FILE *file = fopen(path, "r");
     int index = 0;
