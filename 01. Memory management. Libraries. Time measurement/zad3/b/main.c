@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     char *cwd = calloc(PATH_MAX, sizeof(char));
     getcwd(cwd, PATH_MAX);
     char *path = calloc(256, sizeof(char));
-    snprintf(path, 256, "%s/%s", cwd, "raport2.txt");
+    snprintf(path, 256, "%s/%s", cwd, "raport3b.txt");
     FILE *result_file = fopen(path, "a");
     struct rusage *start_usage = calloc(1, sizeof * start_usage);
     struct rusage *end_usage = calloc(1, sizeof * end_usage);
@@ -57,5 +57,6 @@ int main(int argc, char **argv) {
     clock_gettime(CLOCK_REALTIME, end_time);
     getrusage(RUSAGE_SELF, end_usage);
     writeResult(result_file, start_time, end_time, start_usage, end_usage);
+    fclose(result_file);
     return 0;
 }

@@ -1,13 +1,9 @@
 #include <sys/resource.h>
 #include <time.h>
 #include <zconf.h>
-#include "zad1/mylib.h"
+#include "../zad1/mylib.h"
 
 void writeResult(FILE* result_file, struct timespec * start_time, struct timespec * end_time, struct rusage *start_usage, struct rusage *end_usage){
-    printf("REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
-    printf("USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
-    printf("SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
-
     fprintf(result_file, "REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
     fprintf(result_file, "USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
     fprintf(result_file, "SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
@@ -57,5 +53,6 @@ int main(int argc, char **argv) {
     clock_gettime(CLOCK_REALTIME, end_time);
     getrusage(RUSAGE_SELF, end_usage);
     writeResult(result_file, start_time, end_time, start_usage, end_usage);
+    fclose(result_file);
     return 0;
 }

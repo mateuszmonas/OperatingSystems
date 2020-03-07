@@ -2,21 +2,21 @@ CC = gcc -Wall
 OPT = -O0
 
 static: clean
-	$(CC) -c mylib.c -o mylib.o
-	ar crs libmylib.a mylib.o
-	$(CC) main.c -L. -lmylib -o main $(OPT)
+	$(CC) -c ../../zad1/mylib.c -o out/mylib.o
+	ar crs out/libmylib.a out/mylib.o
+	$(CC) main.c -Lout -lmylib -o out/main $(OPT)
 
 shared: clean
-	$(CC) -fPIC -shared mylib.c -o libmylib.so
-	$(CC) main.c -L. -Wl,-rpath=. -lmylib -o main $(OPT)
+	$(CC) -fPIC -shared ../../zad1/mylib.c -o out/libmylib.so
+	$(CC) main.c -Lout -Wl,-rpath=out -lmylib -o out/main $(OPT)
 
 dynamic: clean
-	$(CC) -fPIC -shared mylib.c -o libmylib.so
-	$(CC) main_dynamic.c -L. -Wl,-rpath=. -lmylib -ldl -o main_dynamic $(OPT)
+	$(CC) -fPIC -shared ../../zad1/mylib.c -o out/libmylib.so
+	$(CC) main_dynamic.c -Lout -Wl,-rpath=out -lmylib -ldl -o out/main_dynamic $(OPT)
 
 clean:
-	rm -f *.o
-	rm -f *.a
-	rm -f *.so
-	rm -f main
-	rm -f *.txt
+	rm -rf out/
+	mkdir out/
+
+test:
+	./out/main create_table 2 compare_pairs ../../test_files/a.txt:../../test_files/b.txt ../../test_files/c.txt:../../test_files/d.txt

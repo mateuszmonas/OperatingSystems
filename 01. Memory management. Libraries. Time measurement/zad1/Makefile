@@ -1,22 +1,12 @@
 CC = gcc -Wall
-OPT = -O0
 
 static: clean
-	$(CC) -c mylib.c -o mylib.o
-	ar crs libmylib.a mylib.o
-	$(CC) main.c -L. -lmylib -o main $(OPT)
+	$(CC) -c mylib.c -o out/mylib.o
+	ar crs out/libmylib.a out/mylib.o
 
 shared: clean
-	$(CC) -fPIC -shared mylib.c -o libmylib.so
-	$(CC) main.c -L. -Wl,-rpath=. -lmylib -o main $(OPT)
-
-dynamic: clean
-	$(CC) -fPIC -shared mylib.c -o libmylib.so
-	$(CC) main_dynamic.c -L. -Wl,-rpath=. -lmylib -ldl -o main_dynamic $(OPT)
+	$(CC) -fPIC -shared out/mylib.c -o out/libmylib.so
 
 clean:
-	rm -f *.o
-	rm -f *.a
-	rm -f *.so
-	rm -f main
-	rm -f *.txt
+	rm -rf out/
+	mkdir out/
