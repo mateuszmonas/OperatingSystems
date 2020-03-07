@@ -2,15 +2,35 @@
 
 int main(int argc, char **argv) {
 
-    const char *c[2];
-    c[0] = "a.txt:b.txt";
-    c[1] = "c.txt:d.txt";
-    struct block_array *array = create_block_array(5);
-    add_file_sequence(array, 2, c);
-    compare_files(array);
-    save_block(array, "a.txt:b.txt");
-    save_block(array, "c.txt:d.txt");
-    printf("%d", diff_length(array, 1));
+    if(strcmp(argv[0], "create_table")!=0) {
+        // error create table has to be first arg
+    }
+    int size = atoi(argv[1]);
+    struct block_array * array = create_block_array(size);
+
+    for (int i = 2; i < argc; ++i) {
+        if(strcmp(argv[i], "compare_pairs")==0){
+            char **file_pairs = &argv[++i];
+            int length = 0;
+            while (strcmp(argv[i], "compare_pairs")!=0 || strcmp(argv[i], "remove_block")!=0 || strcmp(argv[i], "remove_operation")!=0){
+                length++;
+                i++;
+            }
+            add_file_sequence(array, length, file_pairs);
+            compare_files(array);
+            for (int j = 0; j < length; ++j) {
+                save_block(array, file_pairs[j]);
+            };
+        }
+        else if(strcmp(argv[i], "remove_block")==0){
+            remove_block(array, atoi(argv[++i]));
+        }
+        else if(strcmp(argv[i], "remove_operation")==0){
+            int block_to_delete_from = ++i;
+            int operation_to_delete = ++i;
+            remove_operation(array, atoi(argv[block_to_delete_from]), atoi(argv[operation_to_delete]));
+        }
+    }
 
     return 0;
 }
