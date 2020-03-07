@@ -1,6 +1,6 @@
-#Zarządzanie pamięcią, biblioteki, pomiar czasu 
+# Zarządzanie pamięcią, biblioteki, pomiar czasu 
 
-##Zadanie 1. Alokacja tablicy ze wskaźnikami na bloki pamięci zawierające  tablicę wskaźników (25%)
+## Zadanie 1. Alokacja tablicy ze wskaźnikami na bloki pamięci zawierające  tablicę wskaźników (25%)
 
 Zaprojektuj i przygotuj zestaw funkcji (bibliotekę) do zarządzania tablicą bloków, w których to blokach pamięci zapisywane są rezultaty operacji porównywania plików wiersz po wierszu (poleceniem ```diff```) sekwencji par plików  — sekwencja ich nazw jest parametrem funkcji. 
 
@@ -47,13 +47,14 @@ Wynik wykonania ```diff a.txt b.txt```:
     > bbb ggg
 
 W tym przypadku tablica główna powinna zawierać tylko jeden wskaźnik na  blok operacji edycyjnych (bo mamy tylko jedną parę plików).  Blok operacji edycyjnych powinien być trzyelementową tablicą wskaźników na napisy z treścią operacji edycyjnych.
-Struktura danych
-![](images/wskazniki.svg)
+
+![Struktura danych](/images/wskazniki.svg "Struktura danych")
+
 Tablice / bloki powinny być alokowane przy pomocy funkcji calloc() (alokacja dynamiczna).
 
 Przygotuj plik Makefile, zawierający polecenia kompilujące pliki źródłowe biblioteki oraz tworzące biblioteki w dwóch wersjach: statyczną i współdzieloną.
 
-##Zadanie 2. Program korzystający z biblioteki (25%)
+## Zadanie 2. Program korzystający z biblioteki (25%)
 
 Napisz program testujący działanie funkcji z biblioteki z zadania 1.
 
@@ -76,7 +77,7 @@ W programie zmierz, wypisz na konsolę i zapisz  do pliku z raportem  czasy real
 * Na przemian  kilkakrotne dodanie i usunięcie zadanej liczby bloków 
 
 Mierząc czasy poszczególnych operacji, zapisz trzy wartości: czas rzeczywisty, czas użytkownika i czas systemowy. Rezultaty umieść pliku raport2.txt i dołącz do archiwum zadania.
-##Zadanie 3. Testy i pomiary (50%)
+## Zadanie 3. Testy i pomiary (50%)
 
 1. (25%) Przygotuj plik Makefile, zawierający polecenie uruchamiania testów oraz polecenia kompilacji programu z zad 2 na trzy sposoby:
     * Z wykorzystaniem bibliotek statycznych,
