@@ -1,27 +1,30 @@
-#include <sys/times.h>
+#include <sys/resource.h>
+#include <time.h>
 #include <zconf.h>
 #include "mylib.h"
 
-double timeDifference(clock_t t1, clock_t t2){
-    return ((double)(t2 - t1) / sysconf(_SC_CLK_TCK));
-}
+void writeResult(FILE* result_file, struct timespec * start_time, struct timespec * end_time, struct rusage *start_usage, struct rusage *end_usage){
+    printf("REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
+    printf("USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
+    printf("SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
 
-void writeResult(clock_t start, clock_t end, struct tms* t_start, struct tms* t_end){
-    printf("\tREAL_TIME: %fl\n", timeDifference(start,end));
-    printf("\tUSER_TIME: %fl\n", timeDifference(t_start->tms_utime, t_end->tms_utime));
-    printf("\tSYSTEM_TIME: %fl\n", timeDifference(t_start->tms_stime, t_end->tms_stime));
-
-//    fprintf(resultFile, "\tREAL_TIME: %fl\n", timeDifference(start, end));
-//    fprintf(resultFile, "\tUSER_TIME: %fl\n", timeDifference(t_start->tms_utime, t_end->tms_utime));
-//    fprintf(resultFile, "\tSYSTEM_TIME: %fl\n", timeDifference(t_start->tms_stime, t_end->tms_stime));
+    fprintf(result_file, "REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
+    fprintf(result_file, "USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
+    fprintf(result_file, "SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
 }
 
 int main(int argc, char **argv) {
-    clock_t program_start, program_end;
-    struct tms *program_start_tms = calloc(1, sizeof * program_start_tms);
-    struct tms *program_end_tms = calloc(1, sizeof * program_end_tms);
-    program_start = times(program_start_tms);
-
+    char *cwd = calloc(PATH_MAX, sizeof(char));
+    getcwd(cwd, PATH_MAX);
+    char *path = calloc(256, sizeof(char));
+    snprintf(path, 256, "%s/%s", cwd, "raport2.txt");
+    FILE *result_file = fopen(path, "a");
+    struct rusage *start_usage = calloc(1, sizeof * start_usage);
+    struct rusage *end_usage = calloc(1, sizeof * end_usage);
+    struct timespec *start_time = calloc(1, sizeof *start_time);
+    struct timespec *end_time = calloc(1, sizeof *end_time);
+    clock_gettime(CLOCK_REALTIME, start_time);
+    getrusage(RUSAGE_SELF, start_usage);
     if(strcmp(argv[1], "create_table")!=0) {
         // error create table has to be first arg
     }
@@ -40,7 +43,7 @@ int main(int argc, char **argv) {
             compare_files(array);
             for (int j = start; j < start + length; ++j) {
                 save_block(array, argv[j]);
-            };
+            }
         }
         else if(strcmp(argv[i], "remove_block")==0){
             remove_block(array, atoi(argv[++i]));
@@ -51,7 +54,8 @@ int main(int argc, char **argv) {
             remove_operation(array, atoi(argv[block_to_delete_from]), atoi(argv[operation_to_delete]));
         }
     }
-    program_end = times(program_end_tms);
-    writeResult(program_start, program_end, program_start_tms, program_end_tms);
+    clock_gettime(CLOCK_REALTIME, end_time);
+    getrusage(RUSAGE_SELF, end_usage);
+    writeResult(result_file, start_time, end_time, start_usage, end_usage);
     return 0;
 }
