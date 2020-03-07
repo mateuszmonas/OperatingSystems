@@ -1,7 +1,7 @@
 #include <sys/resource.h>
 #include <time.h>
 #include <zconf.h>
-#include "mylib.h"
+#include "zad1/mylib.h"
 
 void writeResult(FILE* result_file, struct timespec * start_time, struct timespec * end_time, struct rusage *start_usage, struct rusage *end_usage){
     printf("REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
