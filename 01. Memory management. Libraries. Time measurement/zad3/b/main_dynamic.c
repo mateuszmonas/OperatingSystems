@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
         if(strcmp(argv[i], "compare_pairs")==0){
             int start = ++i;
             int length = 0;
-            while (i < argc && (strcmp(argv[i], "compare_pairs")!=0 || strcmp(argv[i], "remove_block")!=0 || strcmp(argv[i], "remove_operation")!=0)){
+            while (i < argc && (strcmp(argv[i], "save_block")!=0 || strcmp(argv[i], "compare_pairs")!=0 || strcmp(argv[i], "remove_block")!=0 || strcmp(argv[i], "remove_operation")!=0)){
                 length++;
                 i++;
             }
@@ -62,6 +62,9 @@ int main(int argc, char **argv) {
         }
         else if(strcmp(argv[i], "remove_block")==0){
                 remove_block(array, atoi(argv[++i]));
+        }
+        else if(strcmp(argv[i], "save_block")==0){
+            save_block(array, argv[++i]);
         }
         else if(strcmp(argv[i], "remove_operation")==0){
             int block_to_delete_from = ++i;

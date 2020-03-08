@@ -6,7 +6,7 @@ static: clean
 	$(CC) main.c -L$(LIB_PATH)/out -lmylib -o out/main $(OPT)
 
 shared: clean
-	main -C $(LIB_PATH) shared
+	make -C $(LIB_PATH) shared
 	$(CC) main.c -L$(LIB_PATH)/out -Wl,-rpath=$(LIB_PATH)/out -lmylib -o out/main $(OPT)
 
 clean:
