@@ -1,17 +1,17 @@
 CC = gcc -Wall
+LIB_PATH = ../../zad1
 
 static: clean
-	$(CC) -c ../../zad1/mylib.c -o out/mylib.o
-	ar crs out/libmylib.a out/mylib.o
-	$(CC) main.c -Lout -lmylib -o out/main
+	make -C $(LIB_PATH) static
+	$(CC) main.c -L$(LIB_PATH)/out -lmylib -o out/main
 
 shared: clean
-	$(CC) -fPIC -shared ../../zad1/mylib.c -o out/libmylib.so
-	$(CC) main.c -Lout -Wl,-rpath=out -lmylib -o out/main
+	make -C $(LIB_PATH) shared
+	$(CC) main.c -L$(LIB_PATH)/out -Wl,-rpath=$(LIB_PATH)/out -lmylib -o out/main
 
 dynamic: clean
-	$(CC) -fPIC -shared ../../zad1/mylib.c -o out/libmylib.so
-	$(CC) main_dynamic.c -Lout -Wl,-rpath=out -lmylib -ldl -o out/main
+	make -C $(LIB_PATH) shared
+	$(CC) main_dynamic.c -L$(LIB_PATH)/out -Wl,-rpath=$(LIB_PATH)/out -lmylib -ldl -o out/main
 
 clean:
 	rm -rf out/

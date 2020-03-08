@@ -98,10 +98,12 @@ unsigned int diff_length(struct block_array *array, int block_index) {
 
 void remove_block(struct block_array *array, int block_index) {
     free(array->blocks[block_index]);
+    array->blocks[block_index] = NULL;
 }
 
 void remove_operation(struct block_array *array, int block_index, int operation_index) {
     free(array->blocks[block_index]->operations[operation_index]);
+    array->blocks[block_index]->operations[operation_index] = NULL;
 }
 
 

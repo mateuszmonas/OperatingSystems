@@ -5,7 +5,7 @@ static: clean
 	ar crs out/libmylib.a out/mylib.o
 
 shared: clean
-	$(CC) -fPIC -shared out/mylib.c -o out/libmylib.so
+	$(CC) -fPIC -shared mylib.c -o out/libmylib.so
 
 clean:
 	rm -rf out/
