@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     clock_gettime(CLOCK_REALTIME, start_time);
     getrusage(RUSAGE_SELF, start_usage);
 
-    snprintf(path, 256, "%s/%s", cwd, "out/mylib.so");
+    snprintf(path, 256, "%s/%s", cwd, "../../zad1/out/libmylib.so");
     void * mylib = dlopen(path, RTLD_LAZY);
     struct block_array *(*create_block_array)(int) = (struct block_array *(*)(int)) dlsym(mylib, "create_block_array");
     void (*add_file_sequence)(struct block_array *, int, char **) = (void (*)(struct block_array *, int, char **)) dlsym(mylib, "add_file_sequence");
