@@ -1,4 +1,4 @@
-CC = gcc -Wall -g
+CC = gcc -Wall
 LIB_PATH = ../../zad1
 
 static: clean
