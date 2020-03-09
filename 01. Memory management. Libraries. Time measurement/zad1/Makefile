@@ -1,4 +1,4 @@
-CC = gcc -Wall
+CC = gcc -Wall -g
 
 static: clean
 	$(CC) -c mylib.c -o out/mylib.o
