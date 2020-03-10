@@ -37,12 +37,13 @@ int main(int argc, char **argv) {
     snprintf(path, 256, "%s/%s", cwd, "../../zad1/out/libmylib.so");
     void * mylib = dlopen(path, RTLD_LAZY);
     struct block_array *(*create_block_array)(int) = (struct block_array *(*)(int)) dlsym(mylib, "create_block_array");
+    void (*remove_block_array)(struct block_array *) = (void (*)(struct block_array *)) dlsym(mylib, "remove_block_array");
     void (*add_file_sequence)(struct block_array *, int, char **) = (void (*)(struct block_array *, int, char **)) dlsym(mylib, "add_file_sequence");
     void (*compare_files)(struct block_array *) = (void (*)(struct block_array *)) dlsym(mylib, "compare_files");
     unsigned int (*save_block)(struct block_array *, char*) = (unsigned int (*)(struct block_array *, char*)) dlsym(mylib, "save_block");
     unsigned int (*remove_block)(struct block_array *, int) = (unsigned int (*)(struct block_array *, int)) dlsym(mylib, "remove_block");
     unsigned int (*remove_operation)(struct block_array *, int, int) = (unsigned int (*)(struct block_array *, int, int)) dlsym(mylib, "remove_operation");
-    if(strcmp(argv[1], "create_table")!=0) {
+    if (argc < 2 || strcmp(argv[1], "create_table") != 0) {
         // error create table has to be first arg
         return 1;
     }
@@ -88,6 +89,7 @@ int main(int argc, char **argv) {
             writeResult(result_file, test_title, start_time, end_time, start_usage, end_usage);
         }
     }
+    remove_block_array(array);
     dlclose(mylib);
     fclose(result_file);
     return 0;

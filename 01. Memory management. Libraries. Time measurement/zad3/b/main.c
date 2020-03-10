@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     struct rusage *end_usage = calloc(1, sizeof * end_usage);
     struct timespec *start_time = calloc(1, sizeof *start_time);
     struct timespec *end_time = calloc(1, sizeof *end_time);
-    if(strcmp(argv[1], "create_table")!=0) {
+    if (argc < 2 || strcmp(argv[1], "create_table") != 0) {
         // error create table has to be first arg
         return 1;
     }
@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
             writeResult(result_file, test_title, start_time, end_time, start_usage, end_usage);
         }
     }
+    remove_block_array(array);
     fclose(result_file);
     return 0;
 }

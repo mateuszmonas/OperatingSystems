@@ -42,5 +42,7 @@ void remove_block(struct block_array *array, int block_index);
 
 void remove_operation(struct block_array *array, int block_index, int operation_index);
 
+void remove_block_array(struct block_array *array);
+
 
 #endif //OPERATINGSYSTEMS_MYLIB_H

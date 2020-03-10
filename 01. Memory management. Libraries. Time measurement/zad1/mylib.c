@@ -3,8 +3,8 @@
 #include <zconf.h>
 
 struct block_array *create_block_array(int size) {
-    struct block_array *array = malloc(sizeof *array);
-    array->blocks = malloc(size * sizeof(struct block *));
+    struct block_array *array = calloc(1, sizeof *array);
+    array->blocks = calloc(size, sizeof(struct block *));
     array->size = size;
     return array;
 }
@@ -17,7 +17,7 @@ char *get_working_dir() {
 
 void add_file_sequence(struct block_array *array, int length, char **file_pairs) {
     for (int i = 0; i < length; ++i) {
-        struct block *new_block = malloc(sizeof(struct block));
+        struct block *new_block = calloc(1, sizeof(struct block));
         new_block->file_pair = calloc(strlen(file_pairs[i]), sizeof(char));
         strcpy(new_block->file_pair, file_pairs[i]);
         array->blocks[i] = new_block;
@@ -47,7 +47,7 @@ void compare_files(struct block_array *array) {
 }
 
 struct operation *create_operation(char *operation_text) {
-    struct operation *o = malloc(sizeof(struct operation));
+    struct operation *o = calloc(1, sizeof(struct operation));
     o->text = operation_text;
     return o;
 }
@@ -66,7 +66,7 @@ unsigned int save_block(struct block_array *array, char *file_pair) {
         return -1;
     }
     char *file_name = create_temp_file_name(block_index);
-    curr_block->operations = malloc(sizeof(struct operation *));
+    curr_block->operations = calloc(1, sizeof(struct operation *));
     char *buffer = calloc(256, sizeof(char));
     char *path = calloc(256, sizeof(char));
     char *result = calloc(2048, sizeof(char));
@@ -97,13 +97,27 @@ unsigned int diff_length(struct block_array *array, int block_index) {
 }
 
 void remove_block(struct block_array *array, int block_index) {
+    if (array->blocks[block_index] == NULL) {
+        return;
+    }
+    for (int i = 0; i < array->blocks[block_index]->length; ++i) {
+        remove_operation(array, block_index, i);
+    }
     free(array->blocks[block_index]);
     array->blocks[block_index] = NULL;
 }
 
 void remove_operation(struct block_array *array, int block_index, int operation_index) {
+    if (array->blocks[block_index]->operations[operation_index] == NULL) {
+        return;
+    }
     free(array->blocks[block_index]->operations[operation_index]);
     array->blocks[block_index]->operations[operation_index] = NULL;
 }
 
-
+void remove_block_array(struct block_array *array){
+    for (int i = 0; i < array->size; ++i) {
+        remove_block(array, i);
+    }
+    free(array);
+}
