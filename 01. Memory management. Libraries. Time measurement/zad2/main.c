@@ -1,32 +1,33 @@
-#include <sys/resource.h>
-#include <time.h>
+#include <sys/times.h>
 #include <zconf.h>
 #include "../zad1/mylib.h"
 
-void writeResult(FILE* result_file, char* test_title, struct timespec * start_time, struct timespec * end_time, struct rusage *start_usage, struct rusage *end_usage){
+void write_result(FILE* result_file, char* test_title, clock_t st_time, clock_t en_time, struct tms st_cpu, struct tms en_cpu){
     printf("%s\n", test_title);
-    printf("REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
-    printf("USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
-    printf("SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
+    printf("REAL_TIME: %ld\n", en_time - st_time);
+    printf("USER_TIME: %ld\n", en_cpu.tms_utime - st_cpu.tms_utime);
+    printf("SYSTEM_TIME: %ld\n", en_cpu.tms_stime - st_cpu.tms_stime);
 
 
     fprintf(result_file, "%s\n", test_title);
-    fprintf(result_file, "REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
-    fprintf(result_file, "USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
-    fprintf(result_file, "SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
+    fprintf(result_file, "REAL_TIME: %ld\n", en_time - st_time);
+    fprintf(result_file, "USER_TIME: %ld\n", en_cpu.tms_utime - st_cpu.tms_utime);
+    fprintf(result_file, "SYSTEM_TIME: %ld\n", en_cpu.tms_stime - st_cpu.tms_stime);
 }
 
 int main(int argc, char **argv) {
+
+    static clock_t st_time;
+    static clock_t en_time;
+    static struct tms st_cpu;
+    static struct tms en_cpu;
+
     char *cwd = calloc(PATH_MAX, sizeof(char));
     getcwd(cwd, PATH_MAX);
     char *path = calloc(256, sizeof(char));
     char *test_title;
     snprintf(path, 256, "%s/%s", cwd, "raport2.txt");
     FILE *result_file = fopen(path, "a");
-    struct rusage *start_usage = calloc(1, sizeof * start_usage);
-    struct rusage *end_usage = calloc(1, sizeof * end_usage);
-    struct timespec *start_time = calloc(1, sizeof *start_time);
-    struct timespec *end_time = calloc(1, sizeof *end_time);
 
     if (argc < 2 || strcmp(argv[1], "create_table") != 0) {
         // error create table has to be first arg
@@ -65,13 +66,11 @@ int main(int argc, char **argv) {
         }
         else if(strcmp(argv[i], "start_time")==0){
             test_title = argv[++i];
-            clock_gettime(CLOCK_REALTIME, start_time);
-            getrusage(RUSAGE_SELF, start_usage);
+            st_time = times(&st_cpu);
         }
         else if(strcmp(argv[i], "stop_time")==0){
-            clock_gettime(CLOCK_REALTIME, end_time);
-            getrusage(RUSAGE_SELF, end_usage);
-            writeResult(result_file, test_title, start_time, end_time, start_usage, end_usage);
+            en_time = times(&en_cpu);
+            write_result(result_file, test_title, st_time, en_time, st_cpu, en_cpu);
         }
     }
     remove_block_array(array);

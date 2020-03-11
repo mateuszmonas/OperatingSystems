@@ -69,19 +69,31 @@ unsigned int save_block(struct block_array *array, char *file_pair) {
     curr_block->operations = calloc(1, sizeof(struct operation *));
     char *buffer = calloc(256, sizeof(char));
     char *path = calloc(256, sizeof(char));
-    char *result = calloc(2048, sizeof(char));
     snprintf(path, 256, "%s/%s", get_working_dir(), file_name);
     FILE *file = fopen(path, "r");
     int index = 0;
     fgets(buffer, 256, file);
+
+    int result_length = 2048;
+    int current_result_length = 2048;
+    int read_length = 0;
+    char *result = calloc(result_length, sizeof(char));
+
     while (fgets(buffer, 256, file)) {
         if (isdigit(buffer[0])) {
             curr_block->operations[index] = create_operation(result);
             index++;
             curr_block->operations = realloc(curr_block->operations, (index + 1) * sizeof(struct operation *));
             curr_block->length = index;
-            result = (char *) calloc(256, sizeof(char));
+            result = (char *) calloc(result_length, sizeof(char));
+            read_length = 0;
+            current_result_length = 2048;
             continue;
+        }
+        read_length += 256;
+        if (current_result_length <= read_length) {
+            current_result_length += result_length;
+            result = realloc(result, current_result_length * sizeof(char));
         }
         strcat(result, buffer);
     }
