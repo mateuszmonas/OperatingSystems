@@ -4,51 +4,32 @@
 #include <stdbool.h>
 #include <zconf.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include "stdlib.h"
+#include <libexplain/open.h>
 
-char* cwd(){
+char* get_file_path(char* file_name){
     char *cwd = calloc(PATH_MAX, sizeof(char));
     getcwd(cwd, PATH_MAX);
-    return cwd;
+    char *path = calloc(256, sizeof(char));
+    snprintf(path, 256, "%s/%s", cwd, file_name);
+    free(cwd);
+    return path;
 }
 
 void generate(char *path, int lines, int length);
 
-void sort(char *path, int lines, int length, bool using_sys);
+void sort_sys(char *path, int lines, int length);
+void sort_lib(char *path, int lines, int length);
 
-void copy(char *path1, char *path2, int lines, int length, bool using_sys);
-
-void writeResult(FILE* result_file, char* test_title, struct timespec * start_time, struct timespec * end_time, struct rusage *start_usage, struct rusage *end_usage){
-    printf("%s\n", test_title);
-    printf("REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
-    printf("USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
-    printf("SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
-
-
-    fprintf(result_file, "%s\n", test_title);
-    fprintf(result_file, "REAL_TIME: %ldns\n", end_time->tv_nsec - start_time->tv_nsec);
-    fprintf(result_file, "USER_TIME: %ldµs\n", end_usage->ru_utime.tv_usec - start_usage->ru_utime.tv_usec);
-    fprintf(result_file, "SYSTEM_TIME: %ldµs\n", end_usage->ru_stime.tv_usec - start_usage->ru_stime.tv_usec);
-}
-
-
+void copy_sys(char *source_path, char *destination_path, int lines, int length);
+void copy_lib(char *source_path, char *destination_path, int lines, int length);
 
 int main(){
-//    struct rusage *start_usage = calloc(1, sizeof * start_usage);
-//    struct rusage *end_usage = calloc(1, sizeof * end_usage);
-//    struct timespec *start_time = calloc(1, sizeof *start_time);
-//    struct timespec *end_time = calloc(1, sizeof *end_time);
-//
-//
-//
-//    clock_gettime(CLOCK_REALTIME, start_time);
-//    getrusage(RUSAGE_SELF, start_usage);
-//    clock_gettime(CLOCK_REALTIME, end_time);
-//    getrusage(RUSAGE_SELF, end_usage)
-//    writeResult("result_file", "test_title", start_time, end_time, start_usage, end_usage);
-    char *path = calloc(256, sizeof(char));
-    snprintf(path, 256, "%s/%s", cwd(), "destination.txt");
-    generate(path, 3, 256);
+    char *file1 = get_file_path("destination.txt");
+    char *file2 = get_file_path("destination1.txt");
+    generate(file1, 3, 256);
+    copy_sys(file1, file2, 3, 256);
     return 0;
 }
 
@@ -61,4 +42,31 @@ void generate(char *path, int lines, int length) {
         fwrite(buffer, sizeof(char), length, destination);
     }
     free(buffer);
+    fclose(destination);
+    fclose(rand);
+}
+void copy_sys(char *source_path, char *destination_path, int lines, int length){
+    int source = open(source_path, O_RDONLY);
+    int destination = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    char *buffer = calloc(length, sizeof(char));
+    for (int i = 0; i < lines; ++i) {
+        read(source, buffer, length);
+        write(destination, buffer, length);
+    }
+    free(buffer);
+    close(destination);
+    close(source);
+}
+
+void copy_lib(char *source_path, char *destination_path, int lines, int length){
+    FILE *source = fopen(source_path, "r");
+    FILE *destination = fopen(destination_path, "w");
+    char *buffer = calloc(length, sizeof(char));
+    for (int i = 0; i < lines; ++i) {
+        fread(buffer, sizeof(char), length, source);
+        fwrite(buffer, sizeof(char), length, destination);
+    }
+    free(buffer);
+    fclose(destination);
+    fclose(source);
 }
