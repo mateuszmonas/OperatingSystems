@@ -4,7 +4,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <zconf.h>
 
@@ -83,7 +82,7 @@ void write_contents(char* path, struct time_filter* filter, long max_depth){
     char *new_path = calloc(PATH_MAX, sizeof(char));
     struct stat *file_stats = calloc(1, sizeof *file_stats);
     struct dirent *d;
-    while ((d = readdir(dir))) {
+    while ((d = readdir(dir)) != NULL) {
         snprintf(new_path, PATH_MAX, "%s/%s", path, d->d_name);
         stat(new_path, file_stats);
         if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0 || !filter_dir(file_stats, filter)) {
@@ -110,6 +109,7 @@ int main(int argc, char** argv) {
     clock_gettime(CLOCK_REALTIME, &program_start_time);
     struct time_filter fltr = {false, false, "", "", 0, 0};
     char *path = calloc(PATH_MAX, sizeof(char));
+    getcwd(path, PATH_MAX);
     long max_depth = LONG_MAX;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-mtimie") == 0) {
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
             fltr.modification_time_set = true;
             fltr.modification_time_modifier = &val[0];
             fltr.modification_time = strtol(val, NULL, 10);
-        }else if (strcmp(argv[i], "-atimie") == 0) {
+        }else if (strcmp(argv[i], "-atime") == 0) {
             char *val = argv[++i];
             fltr.access_time_set = true;
             fltr.access_time_modifier = &val[0];

@@ -54,7 +54,7 @@ struct time_filter{
 struct time_filter fltr = {false, false, "", "", 0, 0};
 long max_depth = LONG_MAX;
 
-bool filter_dir(struct stat* dir_stat, struct time_filter* filter){
+bool filter_dir(const struct stat* dir_stat, struct time_filter* filter){
     unsigned long mtime_diff = program_start_time.tv_sec - dir_stat->st_mtim.tv_sec;
     unsigned long atime_diff = program_start_time.tv_sec - dir_stat->st_atim.tv_sec;
     bool mod_time_match = true;
