@@ -4,9 +4,10 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <zconf.h>
+#define __USE_XOPEN_EXTENDED 1
+#include <ftw.h>
 
 static struct timespec program_start_time;
 
@@ -50,6 +51,9 @@ struct time_filter{
     long access_time;
 };
 
+struct time_filter fltr = {false, false, "", "", 0, 0};
+long max_depth = LONG_MAX;
+
 bool filter_dir(struct stat* dir_stat, struct time_filter* filter){
     unsigned long mtime_diff = program_start_time.tv_sec - dir_stat->st_mtim.tv_sec;
     unsigned long atime_diff = program_start_time.tv_sec - dir_stat->st_atim.tv_sec;
@@ -75,43 +79,26 @@ bool filter_dir(struct stat* dir_stat, struct time_filter* filter){
     return mod_time_match;
 }
 
-void write_contents(char* path, struct time_filter* filter, long max_depth){
-    if (max_depth <= 0) {
-        return;
+int print_description(const char *fpath, const struct stat *sb,
+                      int typeflag, struct FTW *ftwbuf){
+    if(!filter_dir(sb, &fltr) || ftwbuf->level > max_depth){
+        return 0;
     }
-    DIR* dir = opendir(path);
-    char *new_path = calloc(PATH_MAX, sizeof(char));
-    struct stat *file_stats = calloc(1, sizeof *file_stats);
-    struct dirent *d;
-    while ((d = readdir(dir))) {
-        snprintf(new_path, PATH_MAX, "%s/%s", path, d->d_name);
-        stat(new_path, file_stats);
-        if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0 || !filter_dir(file_stats, filter)) {
-            continue;
-        }
-        char *access_time = time_stamp_to_time(file_stats->st_atim.tv_sec);
-        char *modification_time = time_stamp_to_time(file_stats->st_mtim.tv_sec);
-        printf("%s/%s | links: %lu | type: %s | size: %ld | access time: %s | modification time: %s\n", path, d->d_name,
-               file_stats->st_nlink,
-               d_type_to_string(d->d_type), file_stats->st_size,
-               access_time,
-               modification_time);
-        free(access_time);
-        free(modification_time);
-        if (d->d_type == DT_DIR) {
-            write_contents(new_path, filter, max_depth - 1);
-        }
-    }
-    free(new_path);
-    closedir(dir);
+    char *access_time = time_stamp_to_time(sb->st_atim.tv_sec);
+    char *modification_time = time_stamp_to_time(sb->st_mtim.tv_sec);
+    printf("%s | links: %lu | type: %s | size: %ld | access time: %s | modification time: %s\n", fpath,
+           sb->st_nlink,
+           d_type_to_string(typeflag), sb->st_size,
+           access_time,
+           modification_time);
+    free(access_time);
+    free(modification_time);
+    return 0;
 }
 
 int main(int argc, char** argv) {
     clock_gettime(CLOCK_REALTIME, &program_start_time);
-    struct time_filter fltr = {false, false, "", "", 0, 0};
     char *path = calloc(PATH_MAX, sizeof(char));
-    getcwd(path, PATH_MAX);
-    long max_depth = LONG_MAX;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-mtimie") == 0) {
             char *val = argv[++i];
@@ -125,12 +112,9 @@ int main(int argc, char** argv) {
             fltr.access_time = strtol(val, NULL, 10);
         }else if (strcmp(argv[i], "-maxdepth") == 0) {
             max_depth = strtol(argv[++i], NULL, 10);
-        }else if (argv[i][0]=='/'){
+        }else {
             strcpy(path, argv[i]);
-        } else {
-            strcat(path, argv[i]);
         }
     }
-    write_contents(path, &fltr, max_depth);
-
+    nftw(path, print_description, 0, 0);
 }
