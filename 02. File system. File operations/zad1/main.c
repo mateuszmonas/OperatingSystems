@@ -131,31 +131,31 @@ void sort_lib_helper(FILE* file, int start, int end, int length){
     if (end < start) {
         return;
     }
-    fseek(file, end * length * sizeof(char), SEEK_SET);
     char *pivot = calloc(length, sizeof(char));
+    fseek(file, end * length * sizeof(char), SEEK_SET);
     fread(pivot, sizeof(char), length, file);
 
     char *j_line = calloc(length, sizeof(char));
-    char *i_line = calloc(length, sizeof(char));
 
     int i = start;
-    fseek(file, i * length * sizeof(char), SEEK_SET);
-    fread(i_line, sizeof(char), length, file);
 
     for (int j = start; j < end; ++j) {
         fseek(file, j * length * sizeof(char), SEEK_SET);
         fread(j_line, sizeof(char), length, file);
 
         if (strcmp(j_line, pivot) < 0) {
-            swap_lib(file, i_line, j_line, i, j, length);
-            i++;
             fseek(file, i * length * sizeof(char), SEEK_SET);
-            fread(i_line, sizeof(char), length, file);
+            fread(pivot, sizeof(char), length, file);
+            swap_lib(file, pivot, j_line, i, j, length);
+            i++;
+            fseek(file, end * length * sizeof(char), SEEK_SET);
+            fread(pivot, sizeof(char), length, file);
         }
     }
-    swap_lib(file, i_line, pivot, i, end, length);
+    fseek(file, i * length * sizeof(char), SEEK_SET);
+    fread(j_line, sizeof(char), length, file);
+    swap_lib(file, j_line, pivot, i, end, length);
     free(pivot);
-    free(i_line);
     free(j_line);
     sort_lib_helper(file, start, i - 1, length);
     sort_lib_helper(file, i + 1, end, length);
@@ -178,31 +178,31 @@ void sort_sys_helper(int file, int start, int end, int length){
     if (end < start) {
         return;
     }
-    lseek(file, end * length * sizeof(char), SEEK_SET);
     char *pivot = calloc(length, sizeof(char));
+    lseek(file, end * length * sizeof(char), SEEK_SET);
     read(file, pivot, length);
 
     char *j_line = calloc(length, sizeof(char));
-    char *i_line = calloc(length, sizeof(char));
 
     int i = start;
-    lseek(file, i * length * sizeof(char), SEEK_SET);
-    read(file, i_line, length);
 
     for (int j = start; j < end; ++j) {
         lseek(file, j * length * sizeof(char), SEEK_SET);
         read(file, j_line, length);
 
         if (strcmp(j_line, pivot) < 0) {
-            swap_sys(file, i_line, j_line, i, j, length);
-            i++;
             lseek(file, i * length * sizeof(char), SEEK_SET);
-            read(file, i_line, length);
+            read(file, pivot, length);
+            swap_sys(file, pivot, j_line, i, j, length);
+            i++;
+            lseek(file, end * length * sizeof(char), SEEK_SET);
+            read(file, pivot, length);
         }
     }
-    swap_sys(file, i_line, pivot, i, end, length);
+    lseek(file, i * length * sizeof(char), SEEK_SET);
+    read(file, j_line, length);
+    swap_sys(file, j_line, pivot, i, end, length);
     free(pivot);
-    free(i_line);
     free(j_line);
     sort_sys_helper(file, start, i - 1, length);
     sort_sys_helper(file, i + 1, end, length);
