@@ -22,21 +22,16 @@ char* time_stamp_to_time(time_t timestamp){
 
 char* d_type_to_string(int d_type){
     switch (d_type) {
-        case DT_BLK:
-            return  "block dev";
-        case DT_CHR:
-            return  "char device";
-        case DT_DIR:
+        case FTW_DNR:
+            return  "unr dir";
+        case FTW_NS:
+            return  "uns file";
+        case FTW_D:
             return  "dir";
-        case DT_FIFO:
-            return  "fifo";
-        case DT_LNK:
+        case FTW_SL:
             return  "slink";
-        case DT_REG:
+        case FTW_F:
             return  "file";
-        case DT_SOCK:
-            return  "sock";
-        case DT_UNKNOWN:
         default:
             return "unknown";
     }
