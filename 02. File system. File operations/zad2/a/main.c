@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
     getcwd(path, PATH_MAX);
     long max_depth = LONG_MAX;
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-mtimie") == 0) {
+        if (strcmp(argv[i], "-mtime") == 0) {
             char *val = argv[++i];
             fltr.modification_time_set = true;
             fltr.modification_time_modifier = &val[0];

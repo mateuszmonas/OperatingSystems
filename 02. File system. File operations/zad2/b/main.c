@@ -95,12 +95,12 @@ int main(int argc, char** argv) {
     clock_gettime(CLOCK_REALTIME, &program_start_time);
     char *path = calloc(PATH_MAX, sizeof(char));
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-mtimie") == 0) {
+        if (strcmp(argv[i], "-mtime") == 0) {
             char *val = argv[++i];
             fltr.modification_time_set = true;
             fltr.modification_time_modifier = &val[0];
             fltr.modification_time = strtol(val, NULL, 10);
-        }else if (strcmp(argv[i], "-atimie") == 0) {
+        }else if (strcmp(argv[i], "-atime") == 0) {
             char *val = argv[++i];
             fltr.access_time_set = true;
             fltr.access_time_modifier = &val[0];
