@@ -213,4 +213,3 @@ void sort_sys(char *path, int lines, int length){
     sort_sys_helper(file, 0, lines - 1, length);
     close(file);
 }
-
