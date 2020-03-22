@@ -129,5 +129,4 @@ int main(int argc, char** argv) {
         }
     }
     write_contents(path, &fltr, max_depth);
-
 }
