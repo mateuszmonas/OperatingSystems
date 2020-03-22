@@ -101,6 +101,7 @@ void write_contents(char* path, struct time_filter* filter, long max_depth){
             write_contents(new_path, filter, max_depth - 1);
         }
     }
+    free(file_stats);
     free(new_path);
     closedir(dir);
 }
