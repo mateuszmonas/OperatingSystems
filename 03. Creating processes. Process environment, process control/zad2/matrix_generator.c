@@ -21,8 +21,6 @@ void generate_matrix(long columns, long rows, FILE* A, FILE* B){
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    char *path = calloc(PATH_MAX, sizeof(char));
-    getcwd(path, PATH_MAX);
     if(argc < 4) {
         return 1;
     }
@@ -34,6 +32,7 @@ int main(int argc, char** argv) {
     char *filename_B = calloc(PATH_MAX, sizeof(char));
     FILE *A;
     FILE *B;
+    FILE *MATRICES = fopen("matrices", "w");
     for (int i = 0; i < matrix_count; ++i) {
         snprintf(filename_A, PATH_MAX, "matrix_%d_a", i);
         snprintf(filename_B, PATH_MAX, "matrix_%d_b", i);
@@ -44,6 +43,8 @@ int main(int argc, char** argv) {
         generate_matrix(columns, rows, A, B);
         fclose(A);
         fclose(B);
+        fprintf(MATRICES, "%s %s matrix_%d_c\n", filename_A, filename_B, i);
     }
+    fclose(MATRICES);
     return 0;
 }
