@@ -39,20 +39,15 @@ void create_output_files(char* input_file_name){
 }
 
 int main(int argc, char** argv) {
-//    if(argc < 4) {
-//        return -1;
-//    }
-//    char* input_file_name = argv[1];
-//    long process_count = strtol(argv[2], NULL, 10);
-//    long time = strtol(argv[3], NULL, 10);
-//    bool shared_result_files = strcmp(argv[4], "shared") == 0;
-//    long cpu_limit = strtol(argv[5], NULL, 10);
-//    long memory_limit = strtol(argv[6], NULL, 10);
-
-    char* input_file_name = "matrices";
-    long process_count = 3;
-    long time = 2;
-    bool shared_result_files = false;
+    if(argc < 4) {
+        return -1;
+    }
+    char* input_file_name = argv[1];
+    long process_count = strtol(argv[2], NULL, 10);
+    long time = strtol(argv[3], NULL, 10);
+    bool shared_result_files = strcmp(argv[4], "shared") == 0;
+    long cpu_limit = strtol(argv[5], NULL, 10);
+    long memory_limit = strtol(argv[6], NULL, 10);
 
     if(shared_result_files){
         create_output_files(input_file_name);
@@ -61,16 +56,16 @@ int main(int argc, char** argv) {
     for (int i = 0; i < process_count; ++i) {
         int p;
         if((p = fork()) == 0){
-//            struct rlimit * limit = calloc(1, sizeof *limit);
-//            limit->rlim_cur = cpu_limit;
-//            limit->rlim_max = cpu_limit;
-//            setrlimit(RLIMIT_CPU, limit);
-//            limit->rlim_cur = memory_limit*1048576;
-//            limit->rlim_max = memory_limit*1048576;
-//            setrlimit(RLIMIT_AS, limit);
+            struct rlimit * limit = calloc(1, sizeof *limit);
+            limit->rlim_cur = cpu_limit;
+            limit->rlim_max = cpu_limit;
+            setrlimit(RLIMIT_CPU, limit);
+            limit->rlim_cur = memory_limit*1048576;
+            limit->rlim_max = memory_limit*1048576;
+            setrlimit(RLIMIT_AS, limit);
             if(shared_result_files) multiply_shared_output_file(input_file_name, i, process_count, time);
             else multiply_separate_output_files(input_file_name, i, process_count, time);
-//            free(limit);
+            free(limit);
             return 0;
         } else{
             printf("starting process %d\n", p);
