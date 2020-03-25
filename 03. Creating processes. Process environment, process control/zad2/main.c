@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <zconf.h>
 #include <wait.h>
+#include <errno.h>
 
 #include "matrix_multiplier.c"
 
@@ -46,7 +47,6 @@ int main(int argc, char** argv) {
         FILE *input_file = fopen(input_file_name, "r");
         char *line = calloc(256, sizeof(char));
         while (fgets(line, 256, input_file)) {
-            printf("%d %s\n", getpid(), line);
             strtok(line, " ");
             strtok(NULL, " ");
             char *output_file = strtok(NULL, " ");
@@ -60,10 +60,14 @@ int main(int argc, char** argv) {
                 }
                 snprintf(command_part, 64, "> %s ", output_file);
                 strcat(command, command_part);
-                printf("%s\n", command);
                 execl("/bin/sh", "sh", "-c", command, (char *) NULL);
             } else {
                 wait(0);
+                for (int j = 0; j < process_count; ++j) {
+                    char *file_name = calloc(64, sizeof(char));
+                    snprintf(file_name, 64, "%s_%d", output_file, j);
+                    remove(file_name);
+                }
             }
         }
         free(line);
