@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <libgen.h>
 
 void generate_matrix(long columns, long rows, FILE* A, FILE* B){
     for (int i = 0; i < rows; ++i) {
@@ -21,15 +22,21 @@ void generate_matrix(long columns, long rows, FILE* A, FILE* B){
     }
 }
 
-void generate(long count, long min_size, long max_size){
+void generate(char* file_name, long count, long min_size, long max_size){
+    char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+    strcpy(file_name_cpy, file_name);
+    char *path = dirname(file_name_cpy);
     char *filename_A = calloc(PATH_MAX, sizeof(char));
     char *filename_B = calloc(PATH_MAX, sizeof(char));
     FILE *A;
     FILE *B;
-    FILE *MATRICES = fopen("matrices", "w");
+    FILE *MATRICES = fopen(file_name, "w");
     for (int i = 0; i < count; ++i) {
         snprintf(filename_A, PATH_MAX, "matrix_%d_a", i);
         snprintf(filename_B, PATH_MAX, "matrix_%d_b", i);
+        fprintf(MATRICES, "%s %s matrix_%d_c\n", filename_A, filename_B, i);
+        snprintf(filename_A, PATH_MAX, "%s/matrix_%d_a", path, i);
+        snprintf(filename_B, PATH_MAX, "%s/matrix_%d_b", path, i);
         A = fopen(filename_A, "w");
         B = fopen(filename_B, "w");
         int columns = rand() % (max_size - min_size) + min_size;
@@ -37,8 +44,8 @@ void generate(long count, long min_size, long max_size){
         generate_matrix(columns, rows, A, B);
         fclose(A);
         fclose(B);
-        fprintf(MATRICES, "%s %s matrix_%d_c\n", filename_A, filename_B, i);
     }
+    free(file_name_cpy);
     fclose(MATRICES);
 }
 
@@ -130,14 +137,23 @@ bool check(FILE* A, FILE* B, FILE* C){
 }
 
 void check_all(char*input_file){
+    char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+    strcpy(file_name_cpy, input_file);
+    char *path = dirname(file_name_cpy);
     char *line = calloc(2048, sizeof(char));
     FILE *input = fopen(input_file, "r");
     while (fgets(line, 2048, input)) {
-        FILE *A = fopen(strtok(line, " "), "r");
-        FILE *B = fopen(strtok(NULL, " "), "r");
+        char *file_name_a = calloc(PATH_MAX, sizeof(char));
+        char *file_name_b = calloc(PATH_MAX, sizeof(char));
+        char *file_name_c = calloc(PATH_MAX, sizeof(char));
+        snprintf(file_name_a, PATH_MAX, "%s/%s", path, strtok(line, " "));
+        snprintf(file_name_b, PATH_MAX, "%s/%s", path, strtok(NULL, " "));
         char *c_name = strtok(NULL, " ");
         c_name[strlen(c_name) - 1] = '\0';
-        FILE *C = fopen(c_name, "r");
+        snprintf(file_name_c, PATH_MAX, "%s/%s", path, c_name);
+        FILE *A = fopen(file_name_a, "r");
+        FILE *B = fopen(file_name_b, "r");
+        FILE *C = fopen(file_name_c, "r");
         if(!check(A, B, C)){
             printf("%s not correct \n", c_name);
         }
@@ -145,6 +161,7 @@ void check_all(char*input_file){
         fclose(B);
         fclose(A);
     }
+    free(file_name_cpy);
     fclose(input);
     free(line);
 }
@@ -155,10 +172,11 @@ int main(int argc, char** argv) {
         if(argc < 5) {
             return 1;
         }
-        long matrix_count = strtol(argv[2], NULL, 10);
-        long min_size = strtol(argv[3], NULL, 10);
-        long max_size = strtol(argv[4], NULL, 10);
-        generate(matrix_count, min_size, max_size);
+        char *path = argv[2];
+        long matrix_count = strtol(argv[3], NULL, 10);
+        long min_size = strtol(argv[4], NULL, 10);
+        long max_size = strtol(argv[5], NULL, 10);
+        generate(path, matrix_count, min_size, max_size);
     } else{
         if(argc < 3) {
             return 1;

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
+#include <libgen.h>
 
 int start_column;
 int columns_to_multiply;
@@ -36,16 +37,27 @@ void set_number_of_columns(FILE* file, int process_number, int process_count){
 void multiply_shared_output_file(char* input_file_name, int process_number, int process_count, long time){
     signal(SIGALRM, finish_process);
     alarm(time);
+
+    char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+    strcpy(file_name_cpy, input_file_name);
+    char *path = dirname(file_name_cpy);
+
     FILE* input_file = fopen(input_file_name, "r");
     char *line = calloc(2048, sizeof(char));
 
     while (fgets(line, 2048, input_file)){
-        char *matrix_a_file_name = strtok(line, " ");
-        char *matrix_b_file_name = strtok(NULL, " ");;
+        char *matrix_a_file_name = calloc(PATH_MAX, sizeof(char));
+        char *matrix_b_file_name = calloc(PATH_MAX, sizeof(char));
+        char *matrix_c_file_name = calloc(PATH_MAX, sizeof(char));
+        snprintf(matrix_a_file_name, PATH_MAX, "%s/%s", path, strtok(line, " "));
+        snprintf(matrix_b_file_name, PATH_MAX, "%s/%s", path, strtok(NULL, " "));
+
         char *output_file_name = strtok(NULL, " ");
         output_file_name[strlen(output_file_name) - 1] = '\0';
 
-        FILE* output_file = fopen(output_file_name, "r+");
+        snprintf(matrix_c_file_name, PATH_MAX, "%s/%s", path, output_file_name);
+
+        FILE* output_file = fopen(matrix_c_file_name, "r+");
         FILE *matrix_a = fopen(matrix_a_file_name, "r");
         FILE *matrix_b = fopen(matrix_b_file_name, "r");
 
@@ -133,6 +145,9 @@ void multiply_shared_output_file(char* input_file_name, int process_number, int 
         }
         free(result_matrix);
         free(matrix_line);
+        free(matrix_a_file_name);
+        free(matrix_b_file_name);
+        free(matrix_c_file_name);
         fclose(matrix_a);
         fclose(matrix_b);
         fclose(output_file);
@@ -140,6 +155,7 @@ void multiply_shared_output_file(char* input_file_name, int process_number, int 
         free(matrix_row_b);
         multiplication_count++;
     }
+    free(file_name_cpy);
     free(line);
     fclose(input_file);
     while (true) {}
@@ -148,20 +164,26 @@ void multiply_shared_output_file(char* input_file_name, int process_number, int 
 void multiply_separate_output_files(char* input_file_name, int process_number, int process_count, long time){
     signal(SIGALRM, finish_process);
     alarm(time);
+
+    char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+    strcpy(file_name_cpy, input_file_name);
+    char *path = dirname(file_name_cpy);
+
     FILE* input_file = fopen(input_file_name, "r");
     char *line = calloc(2048, sizeof(char));
 
     while (fgets(line, 2048, input_file)){
-        printf("working on %s", line);
-        char *matrix_a_file_name = strtok(line, " ");
-        char *matrix_b_file_name = strtok(NULL, " ");;
-        char *output_file_name = calloc(64, sizeof(char));
-        char *temp = strtok(NULL, " ");
-        temp[strlen(temp) - 1] = '\0';
-        snprintf(output_file_name, 64, "%s_%d", temp, process_number);
+        char *matrix_a_file_name = calloc(PATH_MAX, sizeof(char));
+        char *matrix_b_file_name = calloc(PATH_MAX, sizeof(char));;
+        char *matrix_c_file_name = calloc(PATH_MAX, sizeof(char));
+        snprintf(matrix_a_file_name, PATH_MAX, "%s/%s", path, strtok(line, " "));
+        snprintf(matrix_b_file_name, PATH_MAX, "%s/%s", path, strtok(NULL, " "));
 
+        char *output_file_name = strtok(NULL, " ");
+        output_file_name[strlen(output_file_name) - 1] = '\0';
+        snprintf(matrix_c_file_name, PATH_MAX, "%s/%s_%d", path, output_file_name, process_number);
 
-        FILE* output_file = fopen(output_file_name, "w");
+        FILE* output_file = fopen(matrix_c_file_name, "w");
         FILE *matrix_a = fopen(matrix_a_file_name, "r");
         FILE *matrix_b = fopen(matrix_b_file_name, "r");
 
@@ -208,10 +230,12 @@ void multiply_separate_output_files(char* input_file_name, int process_number, i
             fprintf(output_file, "\n");
             free(row_matrix_a_nums);
         }
+        free(matrix_a_file_name);
+        free(matrix_b_file_name);
+        free(matrix_c_file_name);
         fclose(matrix_a);
         fclose(matrix_b);
         fclose(output_file);
-        free(output_file_name);
         free(results);
         free(matrix_row_a);
         free(matrix_row_b);

@@ -6,12 +6,27 @@
 #include "matrix_multiplier.c"
 
 void create_output_files(char* input_file_name){
+
+    char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+    strcpy(file_name_cpy, input_file_name);
+    char *path = dirname(file_name_cpy);
+
     FILE *input_file = fopen(input_file_name, "r");
     char *line = calloc(256, sizeof(char));
     while (fgets(line, 256, input_file)) {
-        FILE* A = fopen(strtok(line, " "), "r");
-        FILE* B = fopen(strtok(NULL, " "), "r");
-        FILE* output_file = fopen(strtok(NULL, " "), "w");
+        char *matrix_a_file_name = calloc(PATH_MAX, sizeof(char));
+        char *matrix_b_file_name = calloc(PATH_MAX, sizeof(char));;
+        char *matrix_c_file_name = calloc(PATH_MAX, sizeof(char));
+        snprintf(matrix_a_file_name, PATH_MAX, "%s/%s", path, strtok(line, " "));
+        snprintf(matrix_b_file_name, PATH_MAX, "%s/%s", path, strtok(NULL, " "));
+
+        char *output_file_name = strtok(NULL, " ");
+        output_file_name[strlen(output_file_name) - 1] = '\0';
+        snprintf(matrix_c_file_name, PATH_MAX, "%s/%s", path, output_file_name);
+
+        FILE* A = fopen(matrix_a_file_name, "r");
+        FILE* B = fopen(matrix_b_file_name, "r");
+        FILE* output_file = fopen(matrix_c_file_name, "w");
         int rows = 0;
         int cols = 0;
         char *matrix_line = calloc(2048, sizeof(char));
@@ -28,17 +43,21 @@ void create_output_files(char* input_file_name){
         }
 
         free(matrix_line);
+        free(matrix_a_file_name);
+        free(matrix_b_file_name);
+        free(matrix_c_file_name);
         fclose(A);
         fclose(B);
         fclose(output_file);
     }
     free(line);
+    free(file_name_cpy);
     fclose(input_file);
 }
 
 int main(int argc, char** argv) {
     if(argc < 4) {
-        return -1;
+        return 1;
     }
     char* input_file_name = argv[1];
     long process_count = strtol(argv[2], NULL, 10);
@@ -72,32 +91,38 @@ int main(int argc, char** argv) {
 
 
     if (!shared_result_files) {
+        char *file_name_cpy = calloc(PATH_MAX, sizeof(char));
+        strcpy(file_name_cpy, input_file_name);
+        char *path = dirname(file_name_cpy);
+
         FILE *input_file = fopen(input_file_name, "r");
         char *line = calloc(256, sizeof(char));
         while (fgets(line, 256, input_file)) {
             strtok(line, " ");
             strtok(NULL, " ");
             char *output_file = strtok(NULL, " ");
+            output_file[strlen(output_file) - 1] = '\0';
             if (fork() == 0) {
                 char *command = calloc(2048, sizeof(char));
                 strcpy(command, "paste -d '' ");
                 char *command_part = calloc(64, sizeof(char));
                 for (int j = 0; j < process_count; ++j) {
-                    snprintf(command_part, 64, "%s_%d ", output_file, j);
+                    snprintf(command_part, 64, "%s/%s_%d ", path, output_file, j);
                     strcat(command, command_part);
                 }
-                snprintf(command_part, 64, "> %s ", output_file);
+                snprintf(command_part, 64, "> %s/%s ", path, output_file);
                 strcat(command, command_part);
                 execl("/bin/sh", "sh", "-c", command, (char *) NULL);
             } else {
                 wait(0);
                 for (int j = 0; j < process_count; ++j) {
                     char *file_name = calloc(64, sizeof(char));
-                    snprintf(file_name, 64, "%s_%d", output_file, j);
+                    snprintf(file_name, 64, "%s/%s_%d", path, output_file, j);
                     remove(file_name);
                 }
             }
         }
+        free(file_name_cpy);
         free(line);
         fclose(input_file);
     }
