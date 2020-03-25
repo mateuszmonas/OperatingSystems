@@ -42,9 +42,10 @@ void multiply_shared_output_file(char* input_file_name, int process_number, int 
     while (fgets(line, 2048, input_file)){
         char *matrix_a_file_name = strtok(line, " ");
         char *matrix_b_file_name = strtok(NULL, " ");;
-        char *out_file_name = strtok(NULL, " ");
+        char *output_file_name = strtok(NULL, " ");
+        output_file_name[strlen(output_file_name) - 1] = '\0';
 
-        FILE* output_file = fopen(out_file_name, "r+");
+        FILE* output_file = fopen(output_file_name, "r+");
         FILE *matrix_a = fopen(matrix_a_file_name, "r");
         FILE *matrix_b = fopen(matrix_b_file_name, "r");
 
@@ -115,13 +116,6 @@ void multiply_shared_output_file(char* input_file_name, int process_number, int 
             }
         }
 
-        for (int k = 0; k < rows; ++k) {
-            for (int i = 0; i < cols; ++i) {
-                printf("%ld ", result_matrix[k][i]);
-            }
-            printf("\n");
-        }
-
         ftruncate(fd, 0);
         fseek(output_file, 0, SEEK_SET);
         for (int k = 0; k < rows; ++k) {
@@ -158,13 +152,16 @@ void multiply_separate_output_files(char* input_file_name, int process_number, i
     char *line = calloc(2048, sizeof(char));
 
     while (fgets(line, 2048, input_file)){
+        printf("working on %s", line);
         char *matrix_a_file_name = strtok(line, " ");
         char *matrix_b_file_name = strtok(NULL, " ");;
-        char *out_file_name = calloc(64, sizeof(char));
-        snprintf(out_file_name, 64, "%s_%d", strtok(NULL, " "), process_number);
+        char *output_file_name = calloc(64, sizeof(char));
+        char *temp = strtok(NULL, " ");
+        temp[strlen(temp) - 1] = '\0';
+        snprintf(output_file_name, 64, "%s_%d", temp, process_number);
 
 
-        FILE* output_file = fopen(out_file_name, "w");
+        FILE* output_file = fopen(output_file_name, "w");
         FILE *matrix_a = fopen(matrix_a_file_name, "r");
         FILE *matrix_b = fopen(matrix_b_file_name, "r");
 
@@ -214,7 +211,7 @@ void multiply_separate_output_files(char* input_file_name, int process_number, i
         fclose(matrix_a);
         fclose(matrix_b);
         fclose(output_file);
-        free(out_file_name);
+        free(output_file_name);
         free(results);
         free(matrix_row_a);
         free(matrix_row_b);
