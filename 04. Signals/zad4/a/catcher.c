@@ -24,11 +24,11 @@ void handle_sigusr2(int sig, siginfo_t * info, void *ucontext){
 
 int main(int argc, char** argv){
 
-    if(strcmp(argv[3], "kill") == 0){
+    if(strcmp(argv[1], "kill") == 0){
         mode = KILL;
-    } else if (strcmp(argv[3], "sigqueue") == 0) {
+    } else if (strcmp(argv[1], "sigqueue") == 0) {
         mode = SIGQUEUE;
-    } else if (strcmp(argv[3], "sigrt") == 0) {
+    } else if (strcmp(argv[1], "sigrt") == 0) {
         mode = SIGRT;
     }
     struct sigaction message_action;
@@ -60,6 +60,7 @@ int main(int argc, char** argv){
     }
     printf("otrzymane sygnały: %d\n", received_signals);
     union sigval value;
+    value.sival_int = 0;
     for (int i = 0; i < received_signals; ++i) {
         switch(mode){
             case KILL:
@@ -68,6 +69,7 @@ int main(int argc, char** argv){
             case SIGQUEUE:
                 value.sival_int = i;
                 sigqueue(sender_pid, SIGUSR1, value);
+                break;
             case SIGRT:
                 kill(sender_pid, SIGRTMIN);
                 break;
@@ -78,10 +80,11 @@ int main(int argc, char** argv){
             kill(sender_pid, SIGUSR2);
             break;
         case SIGQUEUE:
-            value.sival_int = 0;
             sigqueue(sender_pid, SIGUSR2, value);
+            break;
         case SIGRT:
             kill(sender_pid, SIGRTMIN + 1);
             break;
     }
+    return 0;
 }

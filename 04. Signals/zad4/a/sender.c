@@ -53,6 +53,17 @@ int main(int argc, char** argv){
         return 1;
     }
 
+    int pid = (int) strtol(argv[1], NULL, 10);
+    int message_count = (int) strtol(argv[2], NULL, 10);
+    if(strcmp(argv[3], "kill") == 0){
+        using_kill(pid, message_count);
+    } else if (strcmp(argv[3], "sigqueue") == 0) {
+        use_sigqueue = true;
+        using_sigqueue(pid, message_count);
+    } else if (strcmp(argv[3], "sigrt") == 0) {
+        using_sigrt(pid, message_count);
+    }
+
     struct sigaction message_action;
     message_action.sa_sigaction = handle_sigusr1;
     message_action.sa_flags = SA_SIGINFO;
@@ -66,17 +77,6 @@ int main(int argc, char** argv){
 
     sigaction(SIGUSR2, &final_message_action, NULL);
     sigaction(SIGRTMIN + 1, &final_message_action, NULL);
-
-    int pid = (int) strtol(argv[1], NULL, 10);
-    int message_count = (int) strtol(argv[2], NULL, 10);
-    if(strcmp(argv[3], "kill") == 0){
-        using_kill(pid, message_count);
-    } else if (strcmp(argv[3], "sigqueue") == 0) {
-        use_sigqueue = true;
-        using_sigqueue(pid, message_count);
-    } else if (strcmp(argv[3], "sigrt") == 0) {
-        using_sigrt(pid, message_count);
-    }
 
     sigset_t mask;
     sigfillset(&mask);
