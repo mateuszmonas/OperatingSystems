@@ -52,6 +52,21 @@ int main(int argc, char** argv){
         fprintf(stderr, "not enough arguments\n");
         return 1;
     }
+
+    struct sigaction message_action;
+    message_action.sa_sigaction = handle_sigusr1;
+    message_action.sa_flags = SA_SIGINFO;
+
+    sigaction(SIGUSR1, &message_action, NULL);
+    sigaction(SIGRTMIN, &message_action, NULL);
+
+    struct sigaction final_message_action;
+    final_message_action.sa_handler = handle_sigusr2;
+    final_message_action.sa_flags = 0;
+
+    sigaction(SIGUSR2, &final_message_action, NULL);
+    sigaction(SIGRTMIN + 1, &final_message_action, NULL);
+
     int pid = (int) strtol(argv[1], NULL, 10);
     int message_count = (int) strtol(argv[2], NULL, 10);
     if(strcmp(argv[3], "kill") == 0){
@@ -62,13 +77,6 @@ int main(int argc, char** argv){
     } else if (strcmp(argv[3], "sigrt") == 0) {
         using_sigrt(pid, message_count);
     }
-    struct sigaction action;
-    sigemptyset(&action.sa_mask);
-    action.sa_sigaction = handle_sigusr1;
-    action.sa_flags = SA_SIGINFO;
-
-    sigaction(SIGUSR1, &action, NULL);
-    signal(SIGUSR2, handle_sigusr2);
 
     sigset_t mask;
     sigfillset(&mask);
@@ -77,6 +85,7 @@ int main(int argc, char** argv){
     sigdelset(&mask, SIGRTMIN);
     sigdelset(&mask, SIGRTMIN + 1);
     sigdelset(&mask, SIGINT);
+
     while (waiting_for_signals) {
         sigsuspend(&mask);
     }

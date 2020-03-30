@@ -31,16 +31,19 @@ int main(int argc, char** argv){
     } else if (strcmp(argv[3], "sigrt") == 0) {
         mode = SIGRT;
     }
+    struct sigaction message_action;
+    message_action.sa_sigaction = handle_sigusr1;
+    message_action.sa_flags = SA_SIGINFO;
 
-    signal(SIGRTMIN, handle_sigusr1);
-    signal(SIGUSR1, handle_sigusr1);
-    struct sigaction action;
-    sigemptyset(&action.sa_mask);
-    action.sa_sigaction = handle_sigusr2;
-    action.sa_flags = SA_SIGINFO;
+    sigaction(SIGRTMIN, &message_action, NULL);
+    sigaction(SIGUSR1, &message_action, NULL);
 
-    sigaction(SIGRTMIN + 1, &action, NULL);
-    sigaction(SIGUSR2, &action, NULL);
+    struct sigaction final_message_action;
+    final_message_action.sa_sigaction = handle_sigusr2;
+    final_message_action.sa_flags = SA_SIGINFO;
+
+    sigaction(SIGRTMIN + 1, &final_message_action, NULL);
+    sigaction(SIGUSR2, &final_message_action, NULL);
 
     printf("%d\n", getpid());
 
@@ -51,11 +54,11 @@ int main(int argc, char** argv){
     sigdelset(&mask, SIGRTMIN);
     sigdelset(&mask, SIGRTMIN + 1);
     sigdelset(&mask, SIGINT);
-    sigprocmask(SIG_BLOCK, &mask, NULL);
 
     while (waiting_for_signals) {
         sigsuspend(&mask);
     }
+    printf("otrzymane sygnały: %d\n", received_signals);
     union sigval value;
     for (int i = 0; i < received_signals; ++i) {
         switch(mode){
@@ -66,7 +69,7 @@ int main(int argc, char** argv){
                 value.sival_int = i;
                 sigqueue(sender_pid, SIGUSR1, value);
             case SIGRT:
-                kill(sender_pid, SIGRTMIN + 1);
+                kill(sender_pid, SIGRTMIN);
                 break;
         }
     }
