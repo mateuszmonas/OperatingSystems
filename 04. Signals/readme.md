@@ -13,7 +13,7 @@ W szczególności eksperymenty proszę wykonać dla sygnału SIGUSR1 w następuj
 
 ## Zadanie 3 (15%)
 
-Przetestuj działanie flagi SA_SIGINFO w funkcji sigation. Zainstaluj w ten sposób procedurę obsługi sygnału (handler) dla odpowiednio dobranych sygnałów stosując składnie procedury handlera z trzema argumentami. Wypisz i skomentuj (przygotowując odpowiednie scenariusze) trzy różne informacje (pomijając numer sygnału oraz identyfikator PID procesu wysyłającego) dostarczane w strukturze siginfo_t przekazywanej jako drugi argument funkcji handlera.
+Przetestuj działanie flagi SA_SIGINFO w funkcji sigaction. Zainstaluj w ten sposób procedurę obsługi sygnału (handler) dla odpowiednio dobranych sygnałów stosując składnie procedury handlera z trzema argumentami. Wypisz i skomentuj (przygotowując odpowiednie scenariusze) trzy różne informacje (pomijając numer sygnału oraz identyfikator PID procesu wysyłającego) dostarczane w strukturze siginfo_t przekazywanej jako drugi argument funkcji handlera.
 ## Zadanie 4 (45%)
 
 Napisz dwa programy: sender program wysyłający sygnały SIGUSR1 i  catcher - program zliczający ilość odebranych sygnałów. Ilość sygnałów SIGUSR1 wysyłanych przez pierwszy program powinna być określana w parametrze wywołania tego programu. Program catcher jest uruchamiany najpierw, wypisuje swój numer PID i czeka na sygnały SIGUSR1 i SIGUSR2. Wszystkie pozostałe sygnały są blokowane. Program sender przyjmuje trzy parametry: PID procesu catcher, ilość sygnałów do wysłania i tryb wysłania sygnałów.
