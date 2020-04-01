@@ -10,32 +10,40 @@
 
 int received_signals = 0;
 bool waiting_for_signals = true;
-int sender_pid;
+int pid;
 int mode = KILL;
 
-void confirm_sig_received(){
-    union sigval value;
-    printf("msg received\n");
+void send_signal(int signal, int val){
     switch(mode){
         case KILL:
-            kill(sender_pid, SIGUSR1);
+            kill(pid, signal);
             break;
-        case SIGQUEUE:
-            value.sival_int = 0;
-            sigqueue(sender_pid, SIGUSR1, value);
+        case SIGQUEUE: {
+            union sigval value = {.sival_int = val};
+            sigqueue(pid, signal, value);
+        }
         case SIGRT:
-            kill(sender_pid, SIGRTMIN);
+            kill(pid, signal);
             break;
     }
 }
 
-void handle_sigusr1(){
-    received_signals++;
+void confirm_sig_received(){
+    send_signal(mode == SIGRT ? SIGRTMIN : SIGUSR1, 0);
+}
+
+void handle_confirmation_request(){
+    confirm_sig_received();
+}
+
+void handle_sigusr1(int sig, siginfo_t * info, void *ucontext){
+    pid = info->si_pid;
+    printf("otrzymano sygnał %d\n", ++received_signals);
     confirm_sig_received();
 }
 
 void handle_sigusr2(int sig, siginfo_t * info, void *ucontext){
-    sender_pid = info->si_pid;
+    pid = info->si_pid;
     waiting_for_signals = false;
 }
 
@@ -56,6 +64,15 @@ int main(int argc, char** argv){
 
     sigaction(SIGUSR1, &message_action, NULL);
     sigaction(SIGRTMIN, &message_action, NULL);
+
+    struct sigaction confirmation_request_action;
+    message_action.sa_handler = handle_confirmation_request;
+    message_action.sa_flags = 0;
+    sigaddset(&message_action.sa_mask, SIGUSR1);
+    sigaddset(&message_action.sa_mask, SIGRTMIN);
+    sigaddset(&message_action.sa_mask, SIGRT + 2);
+
+    sigaction(SIGRTMIN + 2, &confirmation_request_action, NULL);
 
     struct sigaction final_message_action;
     final_message_action.sa_sigaction = handle_sigusr2;
@@ -78,30 +95,10 @@ int main(int argc, char** argv){
         sigsuspend(&mask);
     }
     printf("otrzymane sygnały: %d\n", received_signals);
-    union sigval value;
+
     for (int i = 0; i < received_signals; ++i) {
-        switch(mode){
-            case KILL:
-                kill(sender_pid, SIGUSR1);
-                break;
-            case SIGQUEUE:
-                value.sival_int = i;
-                sigqueue(sender_pid, SIGUSR1, value);
-            case SIGRT:
-                kill(sender_pid, SIGRTMIN);
-                break;
-        }
+        send_signal(mode == SIGRT ? SIGRTMIN : SIGUSR1, i);
     }
-    switch(mode){
-        case KILL:
-            kill(sender_pid, SIGUSR2);
-            break;
-        case SIGQUEUE:
-            value.sival_int = 0;
-            sigqueue(sender_pid, SIGUSR2, value);
-        case SIGRT:
-            kill(sender_pid, SIGRTMIN + 1);
-            break;
-    }
+    send_signal(mode == SIGRT ? SIGRTMIN + 1 : SIGUSR2, 0);
     return 0;
 }

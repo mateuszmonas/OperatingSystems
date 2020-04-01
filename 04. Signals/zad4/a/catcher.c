@@ -10,7 +10,7 @@
 
 int received_signals = 0;
 bool waiting_for_signals = true;
-int sender_pid;
+int pid;
 int mode = KILL;
 
 void handle_sigusr1(){
@@ -18,7 +18,7 @@ void handle_sigusr1(){
 }
 
 void handle_sigusr2(int sig, siginfo_t * info, void *ucontext){
-    sender_pid = info->si_pid;
+    pid = info->si_pid;
     waiting_for_signals = false;
 }
 
@@ -64,26 +64,26 @@ int main(int argc, char** argv){
     for (int i = 0; i < received_signals; ++i) {
         switch(mode){
             case KILL:
-                kill(sender_pid, SIGUSR1);
+                kill(pid, SIGUSR1);
                 break;
             case SIGQUEUE:
                 value.sival_int = i;
-                sigqueue(sender_pid, SIGUSR1, value);
+                sigqueue(pid, SIGUSR1, value);
                 break;
             case SIGRT:
-                kill(sender_pid, SIGRTMIN);
+                kill(pid, SIGRTMIN);
                 break;
         }
     }
     switch(mode){
         case KILL:
-            kill(sender_pid, SIGUSR2);
+            kill(pid, SIGUSR2);
             break;
         case SIGQUEUE:
-            sigqueue(sender_pid, SIGUSR2, value);
+            sigqueue(pid, SIGUSR2, value);
             break;
         case SIGRT:
-            kill(sender_pid, SIGRTMIN + 1);
+            kill(pid, SIGRTMIN + 1);
             break;
     }
     return 0;
