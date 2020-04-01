@@ -14,6 +14,3 @@ catcher:
 clean:
 	rm -rf out/
 	mkdir out/
-
-test: compile
-	./out/main
