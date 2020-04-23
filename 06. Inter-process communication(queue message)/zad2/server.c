@@ -1,18 +1,17 @@
 #include "commands.h"
-#include <sys/ipc.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <sys/msg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <mqueue.h>
 
 #define FREE_SLOT -1
 
 bool running = true;
-key_t private_key;
 int private_descriptor;
-key_t client_pids[MAX_CLIENTS];
+char *client_queue_paths[MAX_CLIENTS];
+int client_queues[MAX_CLIENTS];
 bool available[MAX_CLIENTS];
 int client_count = 0;
 
@@ -22,17 +21,13 @@ void handle_exit(){
     running = false;
     chat_msg msg = {.mtype=STOP};
     for (int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_pids[i] != FREE_SLOT) {
-            msg.client_id = i;
-            msg.client_key = client_pids[i];
-            msgsnd(msgget(client_pids[i], 0), &msg, MSG_SIZE, 0);
+        if (client_queues[i] != FREE_SLOT) {
+            mq_send(client_queues[i], (char *) &msg, MSG_SIZE, 1);
+            mq_close(client_queues[i]);
         }
     }
-    while (0 < client_count) {
-        msgrcv(private_descriptor, &msg, MSG_SIZE, STOP, 0);
-        handle_message(&msg);
-    }
-    msgctl(private_descriptor, IPC_RMID, NULL);
+    mq_close(private_descriptor);
+    mq_unlink(server_queue_path);
 }
 
 void handle_sigint(){
@@ -42,7 +37,7 @@ void handle_sigint(){
 void init(chat_msg * msg){
     int i = 0;
     while (i < MAX_CLIENTS) {
-        if (client_pids[i] == FREE_SLOT) {
+        if (client_queues[i] == FREE_SLOT) {
             break;
         }
         i++;
@@ -50,23 +45,27 @@ void init(chat_msg * msg){
     char *response = calloc(256, sizeof(char));
     if (i == MAX_CLIENTS) {
         sprintf(response, "server is full\n");
+        strcpy(msg->text, response);
         msg->client_id = -1;
-        msgsnd(msgget(msg->client_key, 0), msg, MSG_SIZE, 0);
+        int queue = mq_open(client_queue_paths[i], O_WRONLY);
+        mq_send(queue, (char *) msg, MSG_SIZE, 1);
+        mq_close(queue);
         printf("%s", response);
         return;
     }
-    client_pids[i] = msg->client_key;
-    available[i] = true;
     msg->client_id = i;
+    strcpy(client_queue_paths[i], msg->queue_path);
+    available[i] = true;
+    client_queues[i] = mq_open(client_queue_paths[i], O_WRONLY);
     sprintf(response, "%d joined\n", i);
     strcpy(msg->text, response);
-    msgsnd(msgget(client_pids[i], 0), msg, MSG_SIZE, 0);
+    mq_send(client_queues[i], (char *) msg, MSG_SIZE, 1);
     client_count++;
     printf("%s", response);
 }
 
 void echo(chat_msg * msg){
-    msgsnd(msgget(client_pids[msg->client_id], 0), msg, MSG_SIZE, 0);
+    mq_send(client_queues[msg->client_id], (char *) msg, MSG_SIZE, 1);
     printf("%s\n", msg->text);
 }
 
@@ -77,11 +76,11 @@ void connect(chat_msg * msg){
         msg->mtype = CONNECT;
         strcpy(msg->text, "connected");
         msg->client_id = id2;
-        msg->client_key = client_pids[id2];
-        msgsnd(msgget(client_pids[id1], 0), msg, MSG_SIZE, 0);
+        strcpy(msg->queue_path, client_queue_paths[id2]);
+        mq_send(client_queues[id1], (char *) msg, MSG_SIZE, 1);
         msg->client_id = id1;
-        msg->client_key = client_pids[id1];
-        msgsnd(msgget(client_pids[id2], 0), msg, MSG_SIZE, 0);
+        strcpy(msg->queue_path, client_queue_paths[id1]);
+        mq_send(client_queues[id2], (char *) msg, MSG_SIZE, 1);
         available[id1] = false;
         available[id2] = false;
         printf("connected\n");
@@ -92,14 +91,14 @@ void list(chat_msg * msg){
     char list[2048];
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         char client_text[16];
-        if (client_pids[i] != FREE_SLOT) {
+        if (client_queues[i] != FREE_SLOT) {
             sprintf(client_text, "%d %s\n", i, available[i] ? "" : "busy");
             strcat(list, client_text);
         }
     }
     printf("%s\n", list);
     strcpy(msg->text, list);
-    msgsnd(msgget(client_pids[msg->client_id], 0), msg, MSG_SIZE, 0);
+    mq_send(client_queues[msg->client_id], (char *) msg, MSG_SIZE, 1);
 }
 
 void disconnect(chat_msg * msg){
@@ -108,8 +107,8 @@ void disconnect(chat_msg * msg){
     if (!available[id1] && !available[id2]) {
         msg->mtype = DISCONNECT;
         strcpy(msg->text, "disconnected");
-        msgsnd(msgget(client_pids[id1], 0), msg, MSG_SIZE, 0);
-        msgsnd(msgget(client_pids[id2], 0), msg, MSG_SIZE, 0);
+        mq_send(client_queues[id1], (char *) msg, MSG_SIZE, 1);
+        mq_send(client_queues[id2], (char *) msg, MSG_SIZE, 1);
         available[id1] = true;
         available[id2] = true;
         printf("disconnected\n");
@@ -117,7 +116,8 @@ void disconnect(chat_msg * msg){
 }
 
 void stop(chat_msg * msg){
-    client_pids[msg->client_id] = FREE_SLOT;
+    mq_close(client_queues[msg->client_id]);
+    client_queues[msg->client_id] = FREE_SLOT;
     available[msg->client_id] = false;
     client_count--;
     printf("%d left\n", msg->client_id);
@@ -148,18 +148,24 @@ void handle_message(chat_msg * msg){
 }
 
 int main(int argc, char** argv) {
-    atexit(handle_exit);
+    mq_unlink(server_queue_path);
+        atexit(handle_exit);
     signal(SIGINT, handle_sigint);
-    private_key = ftok(getenv("HOME"), PROJECT_ID);
-    private_descriptor = msgget(private_key, IPC_CREAT | IPC_EXCL | 0666);
+
+    struct mq_attr posix_attr;
+    posix_attr.mq_maxmsg = 10;
+    posix_attr.mq_msgsize = MSG_SIZE;
+    private_descriptor = mq_open(server_queue_path, O_RDONLY | O_CREAT | O_EXCL, 0666, &posix_attr);
 
     for (int i = 0; i < MAX_CLIENTS; ++i) {
-        client_pids[i] = FREE_SLOT;
+        client_queues[i] = FREE_SLOT;
         available[i] = false;
+        client_queue_paths[i] = calloc(16, sizeof(char));
     }
+
     chat_msg msg;
     while(running){
-        msgrcv(private_descriptor, &msg, MSG_SIZE, -STOP, 0);
+        mq_receive(private_descriptor, (char *) &msg, MSG_SIZE, NULL);
         handle_message(&msg);
     }
     return 0;

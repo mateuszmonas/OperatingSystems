@@ -1,21 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-#include <sys/msg.h>
 #include <zconf.h>
 #include <stdbool.h>
 #include <string.h>
+#include <mqueue.h>
 #include "commands.h"
 
 bool running = true;
-key_t private_key;
+char private_queue_path[16];
 int private_descriptor;
-key_t server_key;
 int server_descriptor;
 int client_id;
 
 int receiver_id;
-int receiver_key;
 int receiver_descriptor;
 
 void separate_command(char *line, char *command, char *rest)
@@ -46,11 +44,10 @@ void separate_command(char *line, char *command, char *rest)
 }
 
 void init(){
-    chat_msg msg = {.mtype=INIT, .client_key=private_key};
-    msgsnd(server_descriptor, &msg, MSG_SIZE, 0);
-    if (msgrcv(private_descriptor, &msg, MSG_SIZE, 0, IPC_NOWAIT) < 0) {
-        printf("server error");
-    }
+    chat_msg msg = {.mtype=INIT};
+    strcpy(msg.queue_path, private_queue_path);
+    mq_send(server_descriptor, (char *) &msg, MSG_SIZE, 1);
+    mq_receive(private_descriptor, (char *) &msg, MSG_SIZE, NULL);
     if (msg.client_id == -1) {
         printf("server full");
         exit(EXIT_FAILURE);
@@ -60,38 +57,47 @@ void init(){
 }
 
 void echo(char *text) {
-    chat_msg msg = {.mtype=ECHO, .client_id=client_id, .client_key=private_key};
+    chat_msg msg = {.mtype=ECHO, .client_id=client_id};
     strcpy(msg.text, text);
-    msgsnd(receiver_descriptor, &msg, MSG_SIZE, 0);
+    mq_send(receiver_descriptor, (char *) &msg, MSG_SIZE, 1);
 }
 
 void connect(char* id){
-    chat_msg msg = {.mtype=CONNECT, .client_id=client_id, .client_key=private_key};
+    chat_msg msg = {.mtype=CONNECT, .client_id=client_id};
     strcpy(msg.text, id);
-    msgsnd(server_descriptor, &msg, MSG_SIZE, 0);
-    msgrcv(private_descriptor, &msg, MSG_SIZE, 0, 0);
-    receiver_key = msg.client_key;
+    mq_send(server_descriptor, (char *) &msg, MSG_SIZE, 1);
+    mq_receive(private_descriptor, (char *) &msg, MSG_SIZE, NULL);
     receiver_id = msg.client_id;
-    receiver_descriptor = msgget(receiver_key, 0);
+    receiver_descriptor = mq_open(msg.queue_path, O_WRONLY);
     printf("%s", msg.text);
 }
 
 void list(){
-    chat_msg msg = {.mtype=LIST, .client_id=client_id, .client_key=private_key};
-    msgsnd(server_descriptor, &msg, MSG_SIZE, 0);
-    msgrcv(private_descriptor, &msg, MSG_SIZE, 0, 0);
+    chat_msg msg = {.mtype=LIST, .client_id=client_id};
+    strcpy(msg.queue_path, private_queue_path);
+    mq_send(server_descriptor, (char *) &msg, MSG_SIZE, 1);
+    mq_receive(private_descriptor, (char *) &msg, MSG_SIZE, NULL);
     printf("%s", msg.text);
 }
 
 void disconnect(){
-    chat_msg msg = {.mtype=DISCONNECT, .client_id=client_id, .client_key=private_key};
-    msgsnd(server_descriptor, &msg, MSG_SIZE, 0);
+    chat_msg msg = {.mtype=DISCONNECT, .client_id=client_id};
+    sprintf(msg.text, "%d", receiver_id);
+    strcpy(msg.queue_path, private_queue_path);
+    mq_send(server_descriptor, (char *) &msg, MSG_SIZE, 1);
+    mq_close(receiver_descriptor);
+    receiver_descriptor = server_descriptor;
 }
 
 void stop(){
     printf("stopping\n");
-    chat_msg msg = {.mtype=STOP, .client_id=client_id, .client_key=private_key};
-    msgsnd(server_descriptor, &msg, MSG_SIZE, 0);
+    chat_msg msg = {.mtype=STOP, .client_id=client_id};
+    strcpy(msg.queue_path, private_queue_path);
+    mq_send(server_descriptor, (char *) &msg, MSG_SIZE, 1);
+    mq_close(private_descriptor);
+    mq_close(receiver_descriptor);
+    mq_close(server_descriptor);
+    mq_unlink(private_queue_path);
 }
 
 void handle_sigint(){
@@ -107,12 +113,12 @@ void handle_message(chat_msg * msg){
         case STOP:
             exit(EXIT_SUCCESS);
         case CONNECT:
+            receiver_descriptor = mq_open(msg->queue_path, O_WRONLY);
             receiver_id = msg->client_id;
-            receiver_key = msg->client_key;
-            receiver_descriptor = msgget(msg->client_key, 0);
             printf("%s", msg->text);
             break;
         case DISCONNECT:
+            mq_close(receiver_descriptor);
             receiver_descriptor = server_descriptor;
             printf("%s", msg->text);
     }
@@ -136,17 +142,18 @@ void handle_exit(){
     running = false;
     disconnect();
     stop();
-    msgctl(private_descriptor, IPC_RMID, NULL);
 }
 
 int main(int argc, char **argv) {
     atexit(handle_exit);
     signal(SIGINT, handle_sigint);
-    private_key = ftok(getenv("HOME"), getpid());
-    private_descriptor = msgget(private_key, IPC_CREAT | IPC_EXCL | 0666);
+    snprintf(private_queue_path, 10, "/%d", getpid());
+    struct mq_attr posix_attr;
+    posix_attr.mq_maxmsg = 10;
+    posix_attr.mq_msgsize = MSG_SIZE;
+    private_descriptor = mq_open(private_queue_path, O_RDONLY | O_CREAT | O_EXCL, 0666, &posix_attr);
 
-    server_key = ftok(getenv("HOME"), PROJECT_ID);
-    server_descriptor = msgget(server_key, 0);
+    server_descriptor = mq_open(server_queue_path, O_WRONLY);
     receiver_descriptor = server_descriptor;
 
     init();
@@ -155,18 +162,18 @@ int main(int argc, char **argv) {
     char rest[256];
     char cmd[256];
     chat_msg msg;
-    struct msqid_ds buf;
+    struct mq_attr buf;
     while (running){
         printf("\nType command:\n> ");
         fgets(buff, 256, stdin);
         separate_command(buff, cmd, rest);
         handle_command(cmd, rest);
 
-        msgctl(private_descriptor, IPC_STAT, &buf);
-        while (0 < buf.msg_qnum){
-            msgrcv(private_descriptor, &msg, MSG_SIZE, 0, IPC_NOWAIT);
+        mq_getattr(private_descriptor, &buf);
+        while (0 < buf.mq_curmsgs){
+            mq_receive(private_descriptor, (char *) &msg, MSG_SIZE, NULL);
             handle_message(&msg);
-            msgctl(private_descriptor, IPC_STAT, &buf);
+            mq_getattr(private_descriptor, &buf);
         }
     }
 

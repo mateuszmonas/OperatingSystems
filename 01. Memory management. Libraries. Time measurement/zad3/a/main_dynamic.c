@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
     FILE *result_file = fopen(path, "a");
     memset(path, 0, 256);
 
-    snprintf(path, 256, "%s/%s", cwd, "../../zad1/out/libmylib.so");
+    snprintf(path, 256, "%s/%s", cwd, "../../zad2/out/libmylib.so");
     void * mylib = dlopen(path, RTLD_LAZY);
     struct block_array *(*create_block_array)(int) = (struct block_array *(*)(int)) dlsym(mylib, "create_block_array");
     void (*add_file_sequence)(struct block_array *, int, char **) = (void (*)(struct block_array *, int, char **)) dlsym(mylib, "add_file_sequence");
