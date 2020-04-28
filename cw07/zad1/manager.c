@@ -32,7 +32,10 @@ int main(int argc, char **argv) {
     semctl(semid, PACKAGES_TO_PREPARE, SETVAL, arg);
     semctl(semid, PACKAGES_TO_SEND, SETVAL, arg);
     semctl(semid, MEMORY_BUSY, SETVAL, arg);
-    int shmid = shmget(project_key, PACKAGE_COUNT * sizeof(int), IPC_CREAT | IPC_EXCL | 0666);
+    semctl(semid, PACKAGE_TO_PREPARE_INDEX, SETVAL, arg);
+    semctl(semid, PACKAGE_TO_SEND_INDEX, SETVAL, arg);
+    semctl(semid, CREATED_PACKAGE_INDEX, SETVAL, arg);
+    int shmid = shmget(project_key, MAX_PACKAGE_COUNT * sizeof(int), IPC_CREAT | IPC_EXCL | 0666);
 
     for (int i = 0; i < first_count; ++i) {
         if (fork() == 0) {
