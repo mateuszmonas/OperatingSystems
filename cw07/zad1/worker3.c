@@ -27,10 +27,11 @@ void send_package(){
     if (packages_to_send != 0) {
         int package_index = semctl(semid, PACKAGE_TO_SEND_INDEX, GETVAL, NULL) % MAX_PACKAGE_COUNT;
         packages[package_index] *= 3;
-        semop(semid, sops_after, 3);
 
         printf("[%d %ld] Wysłałem zamówienie o wielkości %d. Liczba zamównień do przygotowania: %d. Liczba zamównień do wysłania: %d.\n",
                getpid(), time(NULL), packages[package_index], packages_to_prepare, packages_to_send - 1);
+
+        semop(semid, sops_after, 3);
     } else {
         semop(semid, sops_after, 1);
     }

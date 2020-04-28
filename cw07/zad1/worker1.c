@@ -20,18 +20,18 @@ static void finish_process(){
     exit(EXIT_SUCCESS);
 }
 
-void send_package(){
+void create_package(){
     semop(semid, sops_before, 2);
     int packages_to_prepare = semctl(semid, PACKAGES_TO_PREPARE, GETVAL, NULL);
     int packages_to_send = semctl(semid, PACKAGES_TO_SEND, GETVAL, NULL);
     if (packages_to_prepare + packages_to_send < MAX_PACKAGE_COUNT) {
         int package_size = rand() % 10;
         packages[semctl(semid, PACKAGE_TO_CREATE_INDEX, GETVAL, NULL) % MAX_PACKAGE_COUNT] = package_size;
-        semop(semid, sops_after, 3);
 
         printf("[%d %ld] Dodalem liczbe: %d. Liczba zamowien do przygotowania: %d. Liczba zamowien do wyslania: %d.\n",
                getpid(), time(NULL), package_size, packages_to_prepare + 1, packages_to_send);
 
+        semop(semid, sops_after, 3);
     } else {
         semop(semid, sops_after, 1);
     }
@@ -62,7 +62,7 @@ int main(int argc, char **argv){
     while (running)
     {
         usleep(rand_time);
-        send_package();
+        create_package();
     }
 
 }

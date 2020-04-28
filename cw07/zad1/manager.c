@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     union semun arg;
     arg.val = 0;
     key_t project_key = ftok(getenv("HOME"), PROJECT_ID);
-    int semid = semget(project_key, SEMAPHORE_SIZE, IPC_CREAT | IPC_EXCL | 0666);
+    int semid = semget(project_key, SEMAPHORES_SIZE, IPC_CREAT | IPC_EXCL | 0666);
     semctl(semid, PACKAGES_TO_PREPARE, SETVAL, arg);
     semctl(semid, PACKAGES_TO_SEND, SETVAL, arg);
     semctl(semid, MEMORY_BUSY, SETVAL, arg);
