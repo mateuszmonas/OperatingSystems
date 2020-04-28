@@ -10,7 +10,7 @@
 #define MEMORY_BUSY 2
 #define PACKAGE_TO_PREPARE_INDEX 3
 #define PACKAGE_TO_SEND_INDEX 4
-#define CREATED_PACKAGE_INDEX 5
+#define PACKAGE_TO_CREATE_INDEX 5
 #define rand_time ((rand() % (100 - 1000 + 1) + 100) * 1000)
 
 #endif //OPERATINGSYSTEMS_COMMANDS_H
