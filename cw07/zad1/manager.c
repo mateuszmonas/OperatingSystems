@@ -18,7 +18,7 @@ union semun {
 
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "not enough arguments");
+        fprintf(stderr, "not enough arguments\n");
         return 1;
     }
     long first_count = strtol(argv[1], NULL, 10);
@@ -39,17 +39,17 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < first_count; ++i) {
         if (fork() == 0) {
-            return 0;
+            execlp("./out/worker1", "worker1", NULL);
         }
     }
     for (int i = 0; i < second_count; ++i) {
         if (fork() == 0) {
-            return 0;
+            execlp("./out/worker2", "worker2", NULL);
         }
     }
     for (int i = 0; i < third_count; ++i) {
         if (fork() == 0) {
-            return 0;
+            execlp("./out/worker3", "worker3", NULL);
         }
     }
 
