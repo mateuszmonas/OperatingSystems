@@ -12,6 +12,12 @@ struct PGM_data{
     long **values;
 };
 
+struct histogram_func_args{
+    struct PGM_data *pgm_data;
+    long thread_number;
+    long thread_count;
+};
+
 int read_pgm_file(struct PGM_data *pgm_data, char *pgm_file) {
     int buffer_size = 256;
     char *buffer = malloc(buffer_size * sizeof(char));
@@ -49,7 +55,10 @@ int create_pgm_file(struct PGM_data *pgm_data, char *pgm_file){
 
 }
 
-long histogram_sign(struct PGM_data *pgm_data, long thread_number, long thread_count) {
+long histogram_sign(struct histogram_func_args* arguments) {
+    struct PGM_data *pgm_data = arguments->pgm_data;
+    long thread_number = arguments->thread_number;
+    long thread_count = arguments->thread_count;
     long value = 0;
     for (long i = 0; i < pgm_data->width; ++i) {
         for (long j = 0; j < pgm_data->height; ++j) {
@@ -64,7 +73,10 @@ long histogram_sign(struct PGM_data *pgm_data, long thread_number, long thread_c
     return value;
 }
 
-long histogram_block(struct PGM_data *pgm_data, long thread_number, long thread_count) {
+long histogram_block(struct histogram_func_args* arguments) {
+    struct PGM_data *pgm_data = arguments->pgm_data;
+    long thread_number = arguments->thread_number;
+    long thread_count = arguments->thread_count;
     long value = 0;
     long start = thread_number * (long) ceil((double) pgm_data->width / (double) thread_count);
     long end = (thread_number + 1) * (long) ceil((double) pgm_data->width / (double) thread_count);
@@ -76,7 +88,10 @@ long histogram_block(struct PGM_data *pgm_data, long thread_number, long thread_
     return value;
 }
 
-long histogram_interval(struct PGM_data *pgm_data, long thread_number, long thread_count) {
+long histogram_interval(struct histogram_func_args* arguments) {
+    struct PGM_data *pgm_data = arguments->pgm_data;
+    long thread_number = arguments->thread_number;
+    long thread_count = arguments->thread_count;
     long value = 0;
     long start = thread_number;
     long end = pgm_data->width;
@@ -89,12 +104,6 @@ long histogram_interval(struct PGM_data *pgm_data, long thread_number, long thre
     return value;
 }
 
-struct histogram_func_args{
-    struct PGM_data *pgm_data;
-    long thread_number;
-    long thread_count;
-}args;
-
 int main(int argc, char **argv){
     if (argc < 5) {
         fprintf(stderr, "not enough arguments");
@@ -102,7 +111,7 @@ int main(int argc, char **argv){
     long thread_count = strtol(argv[1], NULL, 10);
     char *input_file_name = argv[3];
     char *output_file_name = argv[4];
-    long (*histogram_function)(struct PGM_data *, long, long);
+    long (*histogram_function)(struct histogram_func_args *);
 
     if (strcmp(argv[2], "sign") == 0) {
         histogram_function = &histogram_sign;
@@ -115,13 +124,13 @@ int main(int argc, char **argv){
     }
     struct PGM_data pgm_data;
     read_pgm_file(&pgm_data, input_file_name);
-//    struct histogram_func_args args = {.pgm_data = &pgm_data, .thread_count = thread_count};
-    args.pgm_data = &pgm_data;
-    args.thread_count = thread_count;
+    struct histogram_func_args *args = malloc(thread_count* sizeof(struct histogram_func_args));
     pthread_t threads[thread_count];
     for (int i = 0; i < thread_count; ++i) {
-        args.thread_number = i;
-        pthread_create(&threads[i], NULL, (void *) histogram_function, &args);
+        args[i].pgm_data = &pgm_data;
+        args[i].thread_number = i;
+        args[i].thread_count = thread_count;
+        pthread_create(&threads[i], NULL, (void *) histogram_function, &args[i]);
     }
     long sum = 0;
     for (int i = 0; i < thread_count; ++i) {
