@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <math.h>
 #include <pthread.h>
+#include <time.h>
 
 struct PGM_data{
     long width;
@@ -16,6 +17,7 @@ struct histogram_func_args{
     struct PGM_data *pgm_data;
     long thread_number;
     long thread_count;
+    long *results;
 };
 
 int read_pgm_file(struct PGM_data *pgm_data, char *pgm_file) {
@@ -51,67 +53,72 @@ int read_pgm_file(struct PGM_data *pgm_data, char *pgm_file) {
     return 0;
 }
 
-int create_pgm_file(struct PGM_data *pgm_data, char *pgm_file){
-
-}
-
-long histogram_sign(struct histogram_func_args* arguments) {
+struct timespec histogram_sign(struct histogram_func_args* arguments) {
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
     long thread_number = arguments->thread_number;
     long thread_count = arguments->thread_count;
-    long value = 0;
+    long *results = arguments->results;
     for (long i = 0; i < pgm_data->width; ++i) {
         for (long j = 0; j < pgm_data->height; ++j) {
-            if (thread_number * (pgm_data->max_value / thread_count) <= pgm_data->values[j][i] &&
-                pgm_data->values[j][i] < thread_number == (thread_count - 1) ? pgm_data->max_value :
-                (thread_number + 1) * (pgm_data->max_value / thread_count)) {
-                value += pgm_data->values[j][i];
-            }
-
+            if(thread_number * ((pgm_data->max_value + 1) / thread_count) <= pgm_data->values[j][i] && pgm_data->values[j][i] < (thread_number + 1) * ((pgm_data->max_value + 1) / thread_count))
+                results[pgm_data->values[j][i]]++;
         }
     }
-    return value;
+    return start_time;
 }
 
-long histogram_block(struct histogram_func_args* arguments) {
+struct timespec histogram_block(struct histogram_func_args* arguments) {
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
     long thread_number = arguments->thread_number;
     long thread_count = arguments->thread_count;
-    long value = 0;
+    long *results = arguments->results;
     long start = thread_number * (long) ceil((double) pgm_data->width / (double) thread_count);
     long end = (thread_number + 1) * (long) ceil((double) pgm_data->width / (double) thread_count);
     for (long i = start; i < end; ++i) {
         for (long j = 0; j < pgm_data->height; ++j) {
-                value += pgm_data->values[j][i];
+            results[pgm_data->values[j][i]]++;
         }
     }
-    return value;
+    return start_time;
 }
 
-long histogram_interval(struct histogram_func_args* arguments) {
+struct timespec histogram_interval(struct histogram_func_args* arguments) {
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
     long thread_number = arguments->thread_number;
     long thread_count = arguments->thread_count;
-    long value = 0;
+    long *results = arguments->results;
     long start = thread_number;
     long end = pgm_data->width;
     long interval = thread_count;
     for (long i = start; i < end; i += interval) {
         for (long j = 0; j < pgm_data->height; ++j) {
-            value += pgm_data->values[j][i];
+            results[pgm_data->values[j][i]]++;
         }
     }
-    return value;
+    return start_time;
+}
+
+void print_time(struct timespec *start_time) {
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end_time);
+    long time = (end_time.tv_sec - start_time->tv_sec) * 1000000000 + (end_time.tv_nsec - start_time->tv_nsec);
+    printf("time: %ld.%09lds\n", time / 1000000000, time % 1000000000);
 }
 
 int main(int argc, char **argv){
     if (argc < 5) {
-        fprintf(stderr, "not enough arguments");
+        perror("not enough arguments");
     }
     long thread_count = strtol(argv[1], NULL, 10);
     char *input_file_name = argv[3];
     char *output_file_name = argv[4];
-    long (*histogram_function)(struct histogram_func_args *);
+    struct timespec (*histogram_function)(struct histogram_func_args *);
 
     if (strcmp(argv[2], "sign") == 0) {
         histogram_function = &histogram_sign;
@@ -124,19 +131,40 @@ int main(int argc, char **argv){
     }
     struct PGM_data pgm_data;
     read_pgm_file(&pgm_data, input_file_name);
+
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
+
+    long results[thread_count][pgm_data.max_value + 1];
+    for (int k = 0; k < thread_count; ++k) {
+        for (int i = 0; i < pgm_data.max_value + 1; ++i) {
+            results[k][i] = 0;
+        }
+    }
     struct histogram_func_args *args = malloc(thread_count* sizeof(struct histogram_func_args));
     pthread_t threads[thread_count];
     for (int i = 0; i < thread_count; ++i) {
         args[i].pgm_data = &pgm_data;
         args[i].thread_number = i;
         args[i].thread_count = thread_count;
+        args[i].results = results[i];
         pthread_create(&threads[i], NULL, (void *) histogram_function, &args[i]);
     }
-    long sum = 0;
     for (int i = 0; i < thread_count; ++i) {
-        long result;
-        pthread_join(threads[i], (void *) &result);
-        sum += result;
+        struct timespec time;
+        pthread_join(threads[i], (void *) &time);
+        printf("%ld ", threads[i]);
+        print_time(&time);
     }
-    printf("%ld", sum);
+    long *histogram = results[0];
+    for (int i = 1; i < thread_count; ++i) {
+        for (int j = 0; j < pgm_data.max_value + 1; ++j) {
+            histogram[j] += results[i][j];
+        }
+    }
+    printf("total ");
+    print_time(&start_time);
+    for (int l = 0; l < pgm_data.max_value + 1; ++l) {
+        printf("%ld ", histogram[l]);
+    }
 }
