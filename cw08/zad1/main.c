@@ -53,7 +53,13 @@ int read_pgm_file(struct PGM_data *pgm_data, char *pgm_file) {
     return 0;
 }
 
-struct timespec histogram_sign(struct histogram_func_args* arguments) {
+time_t elapsed_time(struct timespec *start_time) {
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end_time);
+    return (end_time.tv_sec - start_time->tv_sec) * 1000000000 + (end_time.tv_nsec - start_time->tv_nsec);
+}
+
+time_t histogram_sign(struct histogram_func_args* arguments) {
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
@@ -66,10 +72,10 @@ struct timespec histogram_sign(struct histogram_func_args* arguments) {
                 results[pgm_data->values[j][i]]++;
         }
     }
-    return start_time;
+    return elapsed_time(&start_time);
 }
 
-struct timespec histogram_block(struct histogram_func_args* arguments) {
+time_t histogram_block(struct histogram_func_args* arguments) {
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
@@ -83,10 +89,10 @@ struct timespec histogram_block(struct histogram_func_args* arguments) {
             results[pgm_data->values[j][i]]++;
         }
     }
-    return start_time;
+    return elapsed_time(&start_time);
 }
 
-struct timespec histogram_interval(struct histogram_func_args* arguments) {
+time_t histogram_interval(struct histogram_func_args* arguments) {
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
     struct PGM_data *pgm_data = arguments->pgm_data;
@@ -101,14 +107,7 @@ struct timespec histogram_interval(struct histogram_func_args* arguments) {
             results[pgm_data->values[j][i]]++;
         }
     }
-    return start_time;
-}
-
-void print_time(struct timespec *start_time) {
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end_time);
-    long time = (end_time.tv_sec - start_time->tv_sec) * 1000000000 + (end_time.tv_nsec - start_time->tv_nsec);
-    printf("time: %ld.%09lds\n", time / 1000000000, time % 1000000000);
+    return elapsed_time(&start_time);
 }
 
 int main(int argc, char **argv){
@@ -118,7 +117,7 @@ int main(int argc, char **argv){
     long thread_count = strtol(argv[1], NULL, 10);
     char *input_file_name = argv[3];
     char *output_file_name = argv[4];
-    struct timespec (*histogram_function)(struct histogram_func_args *);
+    time_t (*histogram_function)(struct histogram_func_args *);
 
     if (strcmp(argv[2], "sign") == 0) {
         histogram_function = &histogram_sign;
@@ -131,6 +130,8 @@ int main(int argc, char **argv){
     }
     struct PGM_data pgm_data;
     read_pgm_file(&pgm_data, input_file_name);
+
+    printf("thread count: %ld | mode: %s\n", thread_count, argv[2]);
 
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
@@ -151,10 +152,9 @@ int main(int argc, char **argv){
         pthread_create(&threads[i], NULL, (void *) histogram_function, &args[i]);
     }
     for (int i = 0; i < thread_count; ++i) {
-        struct timespec time;
+        time_t time;
         pthread_join(threads[i], (void *) &time);
-        printf("%ld ", threads[i]);
-        print_time(&time);
+        printf("%ld time: %ld.%09lds\n", threads[i], time / 1000000000, time % 1000000000);
     }
     long *histogram = results[0];
     for (int i = 1; i < thread_count; ++i) {
@@ -162,9 +162,11 @@ int main(int argc, char **argv){
             histogram[j] += results[i][j];
         }
     }
-    printf("total ");
-    print_time(&start_time);
-    for (int l = 0; l < pgm_data.max_value + 1; ++l) {
-        printf("%ld ", histogram[l]);
+    time_t time = elapsed_time(&start_time);
+    printf("total time: %ld.%09lds\n\n", time / 1000000000, time % 1000000000);
+    FILE *output_file = fopen(output_file_name, "w");
+    for (int i = 0; i < pgm_data.max_value; ++i) {
+        fprintf(output_file, "%d %ld\n", i, histogram[i]);
     }
+    fclose(output_file);
 }
