@@ -112,7 +112,8 @@ time_t histogram_interval(struct histogram_func_args* arguments) {
 
 int main(int argc, char **argv){
     if (argc < 5) {
-        perror("not enough arguments");
+        fprintf(stderr, "not enough arguments\n");
+        return 1;
     }
     long thread_count = strtol(argv[1], NULL, 10);
     char *input_file_name = argv[3];

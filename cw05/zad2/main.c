@@ -6,7 +6,8 @@
 
 int main(int argc, char **argv){
     if (argc < 2) {
-        fprintf(stderr, "not enough arguments");
+        fprintf(stderr, "not enough arguments\n");
+        return 1;
     }
     char *filename = argv[1];
     FILE *file = fopen(filename, "r");

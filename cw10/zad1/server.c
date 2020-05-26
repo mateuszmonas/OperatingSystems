@@ -24,7 +24,8 @@ int client_fds[MAX_CLIENTS];
 int client_statuses[MAX_CLIENTS];
 board_t boards[MAX_CLIENTS / 2];
 int epoll_fd;
-
+int network_socket;
+int local_socket;
 int init_local_socket(char *socket_path) {
     int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr;
@@ -44,7 +45,7 @@ int init_network_socket(char* port_number) {
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    getaddrinfo(NULL, port_number, NULL, &res);
+    getaddrinfo(NULL, port_number, &hints, &res);
     int socket_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     bind(socket_fd, res->ai_addr, res->ai_addrlen);
     listen(socket_fd, MAX_BACKLOG);
@@ -58,7 +59,7 @@ int opponent_index(int client_index){
 }
 
 void disconnect_client(int client_index){
-    char *response = "disconnecting";
+    char *response = "disconnecting\n";
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = client_fds[client_index];
@@ -96,7 +97,7 @@ int connect_client(struct epoll_event* epoll_event){
 }
 
 void ping(){
-    char *ping = "ping\n";
+    char *ping = "ping";
     while (running) {
         for (int i = 0; i < MAX_CLIENTS; ++i) {
             if (client_fds[i] != FREE_SLOT) {
@@ -113,7 +114,6 @@ void ping(){
 }
 
 void sigpipe_handle(){
-    printf("sigpipe\n");
 }
 
 void start_game(int client_index){
@@ -127,7 +127,10 @@ void start_game(int client_index){
 
 void move(int position, int client_index){
     char *response;
-    if (make_move(&boards[client_index / 2], position, client_index) == 0) {
+    if (opponent_index(client_index) == FREE_SLOT) {
+        response = "you are not currently in game\n";
+        write(client_fds[client_index], response, strlen(response));
+    } else if (make_move(&boards[client_index / 2], position, client_index) == 0) {
         response = "your turn\n";
         write(client_fds[opponent_index(client_index)], response, strlen(response));
         response = board_to_string(&boards[client_index / 2]);
@@ -135,7 +138,7 @@ void move(int position, int client_index){
         write(client_fds[opponent_index(client_index)], response, strlen(response));
         free(response);
         board_object bo = get_winner(&boards[client_index / 2]);
-        if (boards[client_index / 2].o_move == 9) {
+        if (boards[client_index / 2].o_move == 9 || bo != EMPTY) {
             if (bo == EMPTY) {
                 response = "it's a draw";
             } else {
@@ -151,11 +154,22 @@ void move(int position, int client_index){
     }
 }
 
+void handle_exit(){
+    char *msg = "disconnecting\n";
+    for (int i = 0; i < MAX_CLIENTS; ++i) {
+        write(client_fds[i], msg, strlen(msg));
+        shutdown(local_socket, SHUT_RDWR);
+    }
+    shutdown(local_socket, SHUT_RDWR);
+    shutdown(network_socket, SHUT_RDWR);
+}
+
 int main(int argc, char **argv){
     if (argc < 3) {
         fprintf(stderr, "not enough arguments\n");
         return 1;
     }
+    atexit(handle_exit);
     signal(SIGPIPE, sigpipe_handle);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         client_fds[i] = FREE_SLOT;
@@ -165,10 +179,10 @@ int main(int argc, char **argv){
     char* port_number = argv[1];
     char* socket_path = argv[2];
 
-    int network_socket = init_network_socket(port_number);
-    int local_socket = init_local_socket(socket_path);
+    network_socket = init_network_socket(port_number);
+    local_socket = init_local_socket(socket_path);
     pthread_t t;
-//    pthread_create(&t, NULL, (void *) ping, NULL);
+    pthread_create(&t, NULL, (void *) ping, NULL);
 
     epoll_fd = epoll_create1(0);
     struct epoll_event event;
@@ -180,10 +194,11 @@ int main(int argc, char **argv){
 
     struct epoll_event events[MAX_EVENTS];
 
-    char buffer[256];
+    char buffer[MAX_MESSAGE_LENGTH];
     char *response;
     while (running) {
         int event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+        printf("%d\n", event_count);
         for (int i = 0; i < event_count; ++i) {
             if (events[i].data.fd == local_socket || events[i].data.fd == network_socket) {
                 int client_index;
@@ -199,24 +214,25 @@ int main(int argc, char **argv){
                     }
                 }
             } else {
-                if(0 < read(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH)) {
-                    int client_index = 0;
-                    while (client_index < MAX_CLIENTS && client_fds[client_index] != events[i].data.fd) {
-                        client_index++;
-                    }
+                int bytes;
+                int client_index = 0;
+                while (client_index < MAX_CLIENTS && client_fds[client_index] != events[i].data.fd) {
+                    client_index++;
+                }
+                if(0 < (bytes = read(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH))) {
+                    buffer[bytes] = '\0';
                     char *command = strtok(buffer, " ");
-                    if (strcmp(command, "ping\n") == 0) {
+                    if (strcmp(command, "ping") == 0) {
                         client_statuses[client_index] = ONLINE;
                     } else if (strcmp(command, "move") == 0) {
                         int position = (int) strtol(strtok(NULL, " "), NULL, 10);
                         move(position, client_index);
-                    } else if (strcmp(command, "exit\n") == 0) {
-                        disconnect_client(client_index);
                     } else {
                         response = "unknown command\n";
                         write(events[i].data.fd, response, strlen(response));
                     }
-                    printf("%s", buffer);
+                } else if (events[i].events == (EPOLLIN | EPOLLHUP)) {
+                    disconnect_client(client_index);
                 }
             }
         }

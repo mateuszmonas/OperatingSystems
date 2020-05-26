@@ -67,7 +67,8 @@ void client(){
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        perror("not enough arguments");
+        fprintf(stderr, "not enough arguments\n");
+        return 1;
     }
     srand(time(NULL));
     chair_count = strtol(argv[1], NULL, 10);
