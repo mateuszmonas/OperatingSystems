@@ -69,6 +69,7 @@ void disconnect_client(int client_index){
     shutdown(client_fds[client_index], SHUT_RDWR);
     client_fds[client_index] = FREE_SLOT;
     client_statuses[client_index] = OFFLINE;
+    memset(&client_addresses[client_index], 0, sizeof(client_addresses[client_index]));
     response = "opponent has left\n";
     if (client_fds[opponent_index(client_index)] != FREE_SLOT) {
         sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
@@ -82,7 +83,7 @@ int connect_client(struct sockaddr *addr, int socket_fd){
     while (j < MAX_CLIENTS) {
         if (client_fds[j] == FREE_SLOT) {
             client_fds[j] = socket_fd;
-            memcpy(&client_addresses[j], addr, sizeof(&addr));
+            client_addresses[j] = *addr;
             client_statuses[j] = ONLINE;
             return j;
         }
@@ -110,6 +111,7 @@ void ping(){
 }
 
 void sigpipe_handle(){
+    printf("sigpipe\n");
 }
 
 void start_game(int client_index){
@@ -162,6 +164,17 @@ void handle_exit(){
     exit(0);
 }
 
+int compare_addr(struct sockaddr *addr1, struct sockaddr *addr2){
+    if (addr1->sa_family == addr2->sa_family) {
+        if (addr1->sa_family == AF_UNIX) {
+            return strcmp(((struct sockaddr_un*) addr1)->sun_path, ((struct sockaddr_un*) addr2)->sun_path);
+        } else {
+            return ((struct sockaddr_in*) addr1)->sin_addr.s_addr - ((struct sockaddr_in*) addr2)->sin_addr.s_addr;
+        }
+    }
+    return -1;
+}
+
 int main(int argc, char **argv){
     if (argc < 3) {
         fprintf(stderr, "not enough arguments\n");
@@ -195,31 +208,34 @@ int main(int argc, char **argv){
 
     char buffer[MAX_MESSAGE_LENGTH];
     char *response;
+    struct sockaddr receive_address;
+    socklen_t receive_address_length;
+
     while (running) {
         int event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-        printf("%d\n", event_count);
         for (int i = 0; i < event_count; ++i) {
             int client_index = 0;
-            struct sockaddr receive_address;
-            socklen_t receive_address_length = sizeof(receive_address);
             recvfrom(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH, 0, &receive_address, &receive_address_length);
             char *command = strtok(buffer, " ");
 
-            while (client_index < MAX_CLIENTS && client_addresses[client_index].sa_data != receive_address.sa_data) {
+
+            while (client_index < MAX_CLIENTS && compare_addr(&client_addresses[client_index], &receive_address) != 0) {
                 client_index++;
             }
+            printf("%d\n", compare_addr(&client_addresses[client_index], &receive_address));
+            printf("%d\n", client_index);
             if (strcmp(command, "join") == 0) {
                 if(client_index < MAX_CLIENTS) {
                     response = "already connected\n";
-                    sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+//                    sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
                 }else if (-1 < (client_index = connect_client(&receive_address, events->data.fd))) {
                     if (client_fds[opponent_index(client_index)] == FREE_SLOT) {
                         response = "waiting for opponent\n";
-                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+//                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
                     } else {
                         response = "found opponent\n";
-                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
-                        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+//                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+//                        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
                         start_game(client_index);
                     }
                 }
@@ -232,10 +248,9 @@ int main(int argc, char **argv){
                 disconnect_client(client_index);
             } else {
                 response = "unknown command\n";
-                sendto(events[i].data.fd, response, strlen(response), 0, &receive_address,
-                       receive_address_length);
+                sendto(events[i].data.fd, response, strlen(response), 0, &receive_address, receive_address_length);
             }
-            printf("%s", buffer);
+            printf("%s\n", buffer);
         }
     }
 }

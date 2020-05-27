@@ -20,7 +20,9 @@ void on_server_disconnected(){
 }
 
 void handle_exit() {
-    shutdown(socket_fd, SHUT_RDWR);
+    char *exit = "exit";
+    write(socket_fd, exit, strlen(exit));
+    close(socket_fd);
 }
 
 void listener(){
@@ -28,7 +30,9 @@ void listener(){
     char *ping = "ping";
     char *disconnecting = "disconnecting\n";
     int bytes;
-    while (0 < (bytes = read(socket_fd, buffer, MAX_MESSAGE_LENGTH))) {
+    while (running) {
+        bytes = read(socket_fd, buffer, MAX_MESSAGE_LENGTH);
+        printf("asd");
         buffer[bytes] = '\0';
         if (strcmp(buffer, ping) == 0) {
             write(socket_fd, ping, strlen(ping));
@@ -38,7 +42,6 @@ void listener(){
             printf("%s", buffer);
         }
     }
-    on_server_disconnected();
 }
 
 int main(int argc, char **argv) {
@@ -47,17 +50,24 @@ int main(int argc, char **argv) {
         return 1;
     }
     signal(SIGPIPE, on_server_disconnected);
-    signal(SIGINT, handle_exit);
+    signal(SIGINT, on_server_disconnected);
     atexit(handle_exit);
     char *connection_type = argv[2];
     char *socket_path = argv[3];
 
     if (strcmp(connection_type, "local") == 0) {
-        socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        socket_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
         struct sockaddr_un addr;
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
         strcpy(addr.sun_path, socket_path);
+
+        struct sockaddr_un bound_addr;
+        memset(&bound_addr, 0, sizeof(struct sockaddr_un));
+        bound_addr.sun_family = AF_UNIX;
+        sprintf(bound_addr.sun_path, "/tmp/%d", getpid());
+
+        bind(socket_fd, (struct sockaddr *)&bound_addr, sizeof(bound_addr));
         connect(socket_fd, (struct sockaddr*)&addr, sizeof(addr));
     }
     else if (strcmp(connection_type, "remote") == 0) {
@@ -65,7 +75,7 @@ int main(int argc, char **argv) {
         struct addrinfo hints;
         memset(&hints, 0, sizeof(struct addrinfo));
         hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_socktype = SOCK_DGRAM;
         getaddrinfo("localhost", socket_path, &hints, &res);
         socket_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
         connect(socket_fd, res->ai_addr, res->ai_addrlen);
@@ -78,10 +88,13 @@ int main(int argc, char **argv) {
     pthread_t t;
     pthread_create(&t, NULL, (void *) listener, NULL);
 
+    write(socket_fd, "join", 5);
+
     char buff[MAX_MESSAGE_LENGTH];
     while (running){
         printf("\nType command:\n");
         fgets(buff, MAX_MESSAGE_LENGTH, stdin);
         write(socket_fd, buff, strlen(buff));
+        perror("");
     }
 }
