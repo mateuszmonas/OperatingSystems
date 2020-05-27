@@ -47,6 +47,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     signal(SIGPIPE, on_server_disconnected);
+    signal(SIGINT, handle_exit);
     atexit(handle_exit);
     char *connection_type = argv[2];
     char *socket_path = argv[3];

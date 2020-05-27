@@ -26,6 +26,9 @@ board_t boards[MAX_CLIENTS / 2];
 int epoll_fd;
 int network_socket;
 int local_socket;
+char *port_number;
+char *socket_path;
+
 int init_local_socket(char *socket_path) {
     int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr;
@@ -162,6 +165,8 @@ void handle_exit(){
     }
     shutdown(local_socket, SHUT_RDWR);
     shutdown(network_socket, SHUT_RDWR);
+    unlink(socket_path);
+    exit(0);
 }
 
 int main(int argc, char **argv){
@@ -170,14 +175,15 @@ int main(int argc, char **argv){
         return 1;
     }
     atexit(handle_exit);
+    signal(SIGINT, handle_exit);
     signal(SIGPIPE, sigpipe_handle);
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         client_fds[i] = FREE_SLOT;
         client_statuses[i] = OFFLINE;
     }
 
-    char* port_number = argv[1];
-    char* socket_path = argv[2];
+    port_number = argv[1];
+    socket_path = argv[2];
 
     network_socket = init_network_socket(port_number);
     local_socket = init_local_socket(socket_path);
@@ -231,7 +237,7 @@ int main(int argc, char **argv){
                         response = "unknown command\n";
                         write(events[i].data.fd, response, strlen(response));
                     }
-                } else if (events[i].events == (EPOLLIN | EPOLLHUP)) {
+                } else {
                     disconnect_client(client_index);
                 }
             }
