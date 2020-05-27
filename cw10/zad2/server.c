@@ -140,7 +140,7 @@ void move(int position, int client_index){
             if (bo == EMPTY) {
                 response = "it's a draw";
             } else {
-                response = bo == O ? "the winner is O" : "the winnder is X";
+                response = bo == O ? "the winner is O" : "the winner is X";
             }
             sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
             sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
@@ -206,11 +206,9 @@ int main(int argc, char **argv){
             int client_index = 0;
             recvfrom(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH, 0, &receive_address, &receive_address_length);
             char *command = strtok(buffer, " ");
-
             while (client_index < MAX_CLIENTS && memcmp(&client_addresses[client_index], &receive_address, receive_address_length) != 0) {
                 client_index++;
             }
-            printf("%d\n", client_index);
             if (strcmp(command, "join") == 0) {
                 if(client_index < MAX_CLIENTS) {
                     response = "already connected\n";
@@ -237,8 +235,6 @@ int main(int argc, char **argv){
                 response = "unknown command\n";
                 sendto(events[i].data.fd, response, strlen(response), 0, &receive_address, receive_address_length);
             }
-            printf("%s\n", buffer);
-            printf("address %s\n", ((struct sockaddr_un*)&client_addresses[0])->sun_path);
         }
     }
 }
