@@ -20,25 +20,27 @@ void on_server_disconnected(){
 }
 
 void handle_exit() {
+    char *exit = "exit";
+    write(socket_fd, exit, strlen(exit));
     shutdown(socket_fd, SHUT_RDWR);
 }
 
 void listener(){
     char buffer[MAX_MESSAGE_LENGTH];
     char *ping = "ping";
-    char *disconnecting = "disconnecting\n";
+    char *disconnecting = "disconnecting";
     int bytes;
-    while (0 < (bytes = read(socket_fd, buffer, MAX_MESSAGE_LENGTH))) {
+    while (running) {
+        bytes = read(socket_fd, buffer, MAX_MESSAGE_LENGTH);
         buffer[bytes] = '\0';
         if (strcmp(buffer, ping) == 0) {
             write(socket_fd, ping, strlen(ping));
-        } else if(strcmp(buffer, disconnecting) == 0) {
+        } else if(strcmp(buffer, disconnecting) == 0 || bytes == 0) {
             on_server_disconnected();
         } else {
-            printf("%s", buffer);
+            printf("%s\n", buffer);
         }
     }
-    on_server_disconnected();
 }
 
 int main(int argc, char **argv) {
@@ -82,6 +84,7 @@ int main(int argc, char **argv) {
     while (running){
         printf("\nType command:\n");
         fgets(buff, MAX_MESSAGE_LENGTH, stdin);
+        buff[strlen(buff) - 1] = '\0';
         write(socket_fd, buff, strlen(buff));
     }
 }

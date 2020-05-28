@@ -204,9 +204,6 @@ int main(int argc, char **argv){
             while (client_index < MAX_CLIENTS && memcmp(&client_addresses[client_index], &receive_address, receive_address_length) != 0) {
                 client_index++;
             }
-            printf("%d\n", client_index);
-            printf("%s\n", ((struct sockaddr_un*)&receive_address)->sun_path);
-            printf("%s\n", command);
             if (strcmp(command, "join") == 0) {
                 if(client_index < MAX_CLIENTS) {
                     response = "already connected";

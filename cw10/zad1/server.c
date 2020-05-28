@@ -35,7 +35,6 @@ int init_local_socket(char *socket_path) {
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, socket_path);
-    unlink(socket_path);
     bind(socket_fd, (struct sockaddr *)&addr, sizeof(addr));
     listen(socket_fd, MAX_BACKLOG);
     return socket_fd;
@@ -62,7 +61,7 @@ int opponent_index(int client_index){
 }
 
 void disconnect_client(int client_index){
-    char *response = "disconnecting\n";
+    char *response = "disconnecting";
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = client_fds[client_index];
@@ -71,7 +70,7 @@ void disconnect_client(int client_index){
     shutdown(client_fds[client_index], SHUT_RDWR);
     client_fds[client_index] = FREE_SLOT;
     client_statuses[client_index] = OFFLINE;
-    response = "opponent has left\n";
+    response = "opponent has left";
     if (client_fds[opponent_index(client_index)] != FREE_SLOT) {
         write(client_fds[opponent_index(client_index)], response, strlen(response));
     }
@@ -94,7 +93,7 @@ int connect_client(struct epoll_event* epoll_event){
         }
         j++;
     }
-    write(new_client, "server is full\n", 15);
+    write(new_client, "server is full", 15);
     shutdown(new_client, SHUT_RDWR);
     return -1;
 }
@@ -130,11 +129,11 @@ void start_game(int client_index){
 
 void move(int position, int client_index){
     char *response;
-    if (opponent_index(client_index) == FREE_SLOT) {
-        response = "you are not currently in game\n";
+    if (client_fds[opponent_index(client_index)] == FREE_SLOT) {
+        response = "you are not currently in game";
         write(client_fds[client_index], response, strlen(response));
     } else if (make_move(&boards[client_index / 2], position, client_index) == 0) {
-        response = "your turn\n";
+        response = "your turn";
         write(client_fds[opponent_index(client_index)], response, strlen(response));
         response = board_to_string(&boards[client_index / 2]);
         write(client_fds[client_index], response, strlen(response));
@@ -152,13 +151,13 @@ void move(int position, int client_index){
             start_game(client_index);
         }
     } else {
-        response = "error\n";
+        response = "error";
         write(client_fds[client_index], response, strlen(response));
     }
 }
 
 void handle_exit(){
-    char *msg = "disconnecting\n";
+    char *msg = "disconnecting";
     for (int i = 0; i < MAX_CLIENTS; ++i) {
         write(client_fds[i], msg, strlen(msg));
         shutdown(local_socket, SHUT_RDWR);
@@ -171,7 +170,7 @@ void handle_exit(){
 
 int main(int argc, char **argv){
     if (argc < 3) {
-        fprintf(stderr, "not enough arguments\n");
+        fprintf(stderr, "not enough arguments");
         return 1;
     }
     atexit(handle_exit);
@@ -204,41 +203,37 @@ int main(int argc, char **argv){
     char *response;
     while (running) {
         int event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-        printf("%d\n", event_count);
         for (int i = 0; i < event_count; ++i) {
             if (events[i].data.fd == local_socket || events[i].data.fd == network_socket) {
                 int client_index;
                 if ((client_index = connect_client(&events[i])) != -1) {
                     if (client_fds[opponent_index(client_index)] == FREE_SLOT) {
-                        response = "waiting for opponent\n";
+                        response = "waiting for opponent";
                         write(client_fds[client_index], response, strlen(response));
                     } else {
-                        response = "found opponent\n";
+                        response = "found opponent";
                         write(client_fds[client_index], response, strlen(response));
                         write(client_fds[opponent_index(client_index)], response, strlen(response));
                         start_game(client_index);
                     }
                 }
             } else {
-                int bytes;
+                int bytes = read(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH);
                 int client_index = 0;
                 while (client_index < MAX_CLIENTS && client_fds[client_index] != events[i].data.fd) {
                     client_index++;
                 }
-                if(0 < (bytes = read(events[i].data.fd, &buffer, MAX_MESSAGE_LENGTH))) {
-                    buffer[bytes] = '\0';
-                    char *command = strtok(buffer, " ");
-                    if (strcmp(command, "ping") == 0) {
-                        client_statuses[client_index] = ONLINE;
-                    } else if (strcmp(command, "move") == 0) {
-                        int position = (int) strtol(strtok(NULL, " "), NULL, 10);
-                        move(position, client_index);
-                    } else {
-                        response = "unknown command\n";
-                        write(events[i].data.fd, response, strlen(response));
-                    }
-                } else {
+                char *command = strtok(buffer, " ");
+                if (strcmp(command, "ping") == 0) {
+                    client_statuses[client_index] = ONLINE;
+                } else if (strcmp(command, "move") == 0) {
+                    int position = (int) strtol(strtok(NULL, " "), NULL, 10);
+                    move(position, client_index);
+                } else if (strcmp(command, "exit") == 0 || bytes <= 0) {
                     disconnect_client(client_index);
+                } else {
+                    response = "unknown command";
+                    write(events[i].data.fd, response, strlen(response));
                 }
             }
         }
