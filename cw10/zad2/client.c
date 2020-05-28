@@ -28,18 +28,17 @@ void handle_exit() {
 void listener(){
     char buffer[MAX_MESSAGE_LENGTH];
     char *ping = "ping";
-    char *disconnecting = "disconnecting\n";
+    char *disconnecting = "disconnecting";
     int bytes;
     while (running) {
         bytes = read(socket_fd, buffer, MAX_MESSAGE_LENGTH);
-        printf("asd");
         buffer[bytes] = '\0';
         if (strcmp(buffer, ping) == 0) {
             write(socket_fd, ping, strlen(ping));
         } else if(strcmp(buffer, disconnecting) == 0) {
             on_server_disconnected();
         } else {
-            printf("%s", buffer);
+            printf("%s\n", buffer);
         }
     }
 }
@@ -94,7 +93,7 @@ int main(int argc, char **argv) {
     while (running){
         printf("\nType command:\n");
         fgets(buff, MAX_MESSAGE_LENGTH, stdin);
+        buff[strlen(buff) - 1] = '\0';
         write(socket_fd, buff, strlen(buff));
-        perror("");
     }
 }

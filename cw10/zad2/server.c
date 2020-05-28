@@ -22,7 +22,7 @@
 int running = 1;
 int client_fds[MAX_CLIENTS];
 int client_statuses[MAX_CLIENTS];
-struct sockaddr_storage client_addresses[MAX_CLIENTS];
+struct sockaddr client_addresses[MAX_CLIENTS];
 board_t boards[MAX_CLIENTS / 2];
 int epoll_fd;
 int network_socket;
@@ -60,19 +60,14 @@ int opponent_index(int client_index){
 }
 
 void disconnect_client(int client_index){
-    char *response = "disconnecting\n";
-    struct epoll_event event;
-    event.events = EPOLLIN;
-    event.data.fd = client_fds[client_index];
-    sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
-    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fds[client_index], &event);
-    shutdown(client_fds[client_index], SHUT_RDWR);
+    char *response = "disconnecting";
+    sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
     client_fds[client_index] = FREE_SLOT;
     client_statuses[client_index] = OFFLINE;
     memset(&client_addresses[client_index], 0, sizeof(client_addresses[client_index]));
-    response = "opponent has left\n";
+    response = "opponent has left";
     if (client_fds[opponent_index(client_index)] != FREE_SLOT) {
-        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
     }
 }
 
@@ -89,7 +84,7 @@ int connect_client(struct sockaddr *addr, int socket_fd, int addr_length){
         }
         j++;
     }
-    sendto(socket_fd, "server is full\n", 15, 0, addr, sizeof(&addr));
+    sendto(socket_fd, "server is full", 15, 0, addr, sizeof(&addr));
     return -1;
 }
 
@@ -101,7 +96,7 @@ void ping(){
                 if (client_statuses[i] == OFFLINE) {
                     disconnect_client(i);
                 } else {
-                    sendto(client_fds[i], ping, strlen(ping), 0, (struct sockaddr*)&client_addresses[i], sizeof(client_addresses[i]));
+                    sendto(client_fds[i], ping, strlen(ping), 0, &client_addresses[i], sizeof(client_addresses[i]));
                     client_statuses[i] = OFFLINE;
                 }
             }
@@ -118,22 +113,22 @@ void start_game(int client_index){
     char *response;
     boards[client_index / 2] = new_board();
     response = board_to_string(&boards[client_index / 2]);
-    sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
-    sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+    sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+    sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
     free(response);
 }
 
 void move(int position, int client_index){
     char *response;
-    if (opponent_index(client_index) == FREE_SLOT) {
-        response = "you are not currently in game\n";
-        sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
+    if (client_fds[opponent_index(client_index)] == FREE_SLOT) {
+        response = "you are not currently in game";
+        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
     } else if (make_move(&boards[client_index / 2], position, client_index) == 0) {
-        response = "your turn\n";
-        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
+        response = "your turn";
+        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
         response = board_to_string(&boards[client_index / 2]);
-        sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
-        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
         free(response);
         board_object bo = get_winner(&boards[client_index / 2]);
         if (boards[client_index / 2].o_move == 9 || bo != EMPTY) {
@@ -142,20 +137,20 @@ void move(int position, int client_index){
             } else {
                 response = bo == O ? "the winner is O" : "the winner is X";
             }
-            sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
-            sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+            sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+            sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
             start_game(client_index);
         }
     } else {
-        response = "error\n";
-        sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
+        response = "error";
+        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
     }
 }
 
 void handle_exit(){
-    char *msg = "disconnecting\n";
+    char *msg = "disconnecting";
     for (int i = 0; i < MAX_CLIENTS; ++i) {
-        sendto(client_fds[i], msg, strlen(msg), 0, (struct sockaddr*)&client_addresses[i], sizeof(client_addresses[i]));
+        sendto(client_fds[i], msg, strlen(msg), 0, &client_addresses[i], sizeof(client_addresses[i]));
         shutdown(local_socket, SHUT_RDWR);
     }
     shutdown(local_socket, SHUT_RDWR);
@@ -166,7 +161,7 @@ void handle_exit(){
 
 int main(int argc, char **argv){
     if (argc < 3) {
-        fprintf(stderr, "not enough arguments\n");
+        fprintf(stderr, "not enough arguments");
         return 1;
     }
     atexit(handle_exit);
@@ -198,7 +193,7 @@ int main(int argc, char **argv){
     char buffer[MAX_MESSAGE_LENGTH];
     char *response;
     struct sockaddr receive_address;
-    socklen_t receive_address_length;
+    socklen_t receive_address_length = sizeof(struct sockaddr);
 
     while (running) {
         int event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
@@ -209,18 +204,21 @@ int main(int argc, char **argv){
             while (client_index < MAX_CLIENTS && memcmp(&client_addresses[client_index], &receive_address, receive_address_length) != 0) {
                 client_index++;
             }
+            printf("%d\n", client_index);
+            printf("%s\n", ((struct sockaddr_un*)&receive_address)->sun_path);
+            printf("%s\n", command);
             if (strcmp(command, "join") == 0) {
                 if(client_index < MAX_CLIENTS) {
-                    response = "already connected\n";
-                    sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
+                    response = "already connected";
+                    sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
                 }else if (-1 < (client_index = connect_client(&receive_address, events->data.fd, receive_address_length))) {
                     if (client_fds[opponent_index(client_index)] == FREE_SLOT) {
-                        response = "waiting for opponent\n";
-                        sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
+                        response = "waiting for opponent";
+                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
                     } else {
-                        response = "found opponent\n";
-                        sendto(client_fds[client_index], response, strlen(response), 0, (struct sockaddr*)&client_addresses[client_index], sizeof(client_addresses[client_index]));
-                        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, (struct sockaddr*)&client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
+                        response = "found opponent";
+                        sendto(client_fds[client_index], response, strlen(response), 0, &client_addresses[client_index], sizeof(client_addresses[client_index]));
+                        sendto(client_fds[opponent_index(client_index)], response, strlen(response), 0, &client_addresses[opponent_index(client_index)], sizeof(client_addresses[opponent_index(client_index)]));
                         start_game(client_index);
                     }
                 }
@@ -232,7 +230,7 @@ int main(int argc, char **argv){
             } else if (strcmp(command, "exit") == 0) {
                 disconnect_client(client_index);
             } else {
-                response = "unknown command\n";
+                response = "unknown command";
                 sendto(events[i].data.fd, response, strlen(response), 0, &receive_address, receive_address_length);
             }
         }
