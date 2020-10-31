@@ -1,4 +1,6 @@
-Operating Systems
+__Jak pomogłem daj gwiazdkę.__
+
+# Operating Systems
 01. [Memory management. Libraries. Time measurement](./cw01)
 02. [File system. File operations](./cw02)
 03. [Creating processes. Process environment, process control](./cw03)
